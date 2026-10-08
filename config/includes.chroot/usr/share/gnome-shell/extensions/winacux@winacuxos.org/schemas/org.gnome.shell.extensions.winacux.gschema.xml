@@ -1,4 +1,4 @@
-/* WinacuxOS shell extension settings schema. */
+<!-- WinacuxOS shell extension settings schema. -->
 
 <gsettings schema="org.gnome.shell.extensions.winacux" gettext-domain="winacuxos">
   <key name="show-widgets" type="b">
@@ -20,5 +20,34 @@
     <default>''</default>
     <summary>Custom wallpaper artwork</summary>
     <description>Absolute path to an image file. Empty uses the default WinacuxOS artwork.</description>
+  </key>
+<key name="cursor-trail" type="b">
+    <default>true</default>
+    <summary>Cursor trail</summary>
+    <description>Show a physics-driven trail behind the pointer.</description>
+  </key>
+  <key name="cursor-trail-length" type="i">
+    <default>22</default>
+    <range min="6" max="48"/>
+    <summary>Cursor trail length</summary>
+    <description>How many nodes make up the trail.</description>
+  </key>
+  <key name="cursor-trail-spread" type="i">
+    <default>9</default>
+    <range min="2" max="24"/>
+    <summary>Cursor trail thickness</summary>
+    <description>Node radius in pixels.</description>
+  </key>
+  <key name="cursor-trail-gravity" type="d">
+    <default>0.0</default>
+    <range min="0.0" max="4.0"/>
+    <summary>Cursor trail gravity</summary>
+    <description>Extra downward pull on trail nodes.</description>
+  </key>
+  <key name="cursor-trail-fade" type="d">
+    <default>0.86</default>
+    <range min="0.5" max="0.98"/>
+    <summary>Cursor trail fade</summary>
+    <description>How quickly trail nodes fade out.</description>
   </key>
 </gsettings>

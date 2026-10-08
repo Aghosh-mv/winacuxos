@@ -12,10 +12,14 @@ gocryptfs
 fdupes
 # Connect: phone pairing (#10)
 kdeconnect
+# Cursor Studio: convert Windows/Chrome cursor packs into Linux themes
+x11-apps
+imagemagick
+breeze-cursor-theme
+
 # Flatpak store + per-app network permissions (#4, #2)
 flatpak
 xdg-desktop-portal
 xdg-desktop-portal-gtk
 xdg-desktop-portal-gnome
 gnome-software-plugin-flatpak
-gnome-software-plugin-snapd

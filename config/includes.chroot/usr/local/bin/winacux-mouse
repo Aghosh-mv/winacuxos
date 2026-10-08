@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""WinacuxOS Mouse Settings.
+
+A single place for every pointer-related option: the cursor theme (including
+importing your own packs via Cursor Studio), the physics trail, speed,
+acceleration, click behaviour, handedness and scrolling.
+
+Options that the running GNOME session does not expose are hidden rather than
+silently failing, so the window always matches reality.
+"""
+
+import os
+import shutil
+import subprocess
+import sys
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gio, GLib, Gtk
+
+APP_ID = "org.winacuxos.Mouse"
+MOUSE = "org.gnome.desktop.peripherals.mouse"
+TOUCHPAD = "org.gnome.desktop.peripherals.touchpad"
+INTERFACE = "org.gnome.desktop.interface"
+WINACUX = "org.gnome.shell.extensions.winacux"
+
+# label, schema, key, kind, extra
+POINTER_OPTIONS = [
+    ("Pointer speed", MOUSE, "speed", "scale", (0.1, 2.0, 0.05)),
+    ("Acceleration profile", MOUSE, "accel-profile", "choice",
+     {"Default": 0, "Adaptive": 1, "Flat": 2}),
+    ("Double-click interval", MOUSE, "double-click", "spin", (100, 1000, 25)),
+    ("Left-handed layout", MOUSE, "left-handed", "switch", None),
+    ("Natural scrolling", TOUCHPAD, "natural-scroll", "switch", None),
+    ("Scroll speed", TOUCHPAD, "speed", "scale", (0.1, 2.0, 0.05)),
+    ("Tap to click", TOUCHPAD, "tap-to-click", "switch", None),
+]
+
+CURSOR_SIZES = [16, 24, 32, 48, 64, 96]
+
+
+def has_key(schema_id, key):
+    """True when the installed schema actually defines this key."""
+    source = Gio.SettingsSchemaSource.get_default()
+    if source is None:
+        return False
+    schema = source.lookup(schema_id, True)
+    return schema is not None and schema.has_key(key)
+
+
+def run_tool(*args):
+    try:
+        result = subprocess.run(["/usr/local/bin/wcx-cursors", *args],
+                                capture_output=True, text=True)
+        return result.returncode, result.stdout.strip(), result.stderr.strip()
+    except Exception as exc:
+        return 1, "", str(exc)
+
+
+class MouseSettings(Adw.ApplicationWindow):
+    def __init__(self, **kwargs):
+        super().__init__(application=kwargs["application"],
+                         title="Winacux Mouse",
+                         default_width=560, default_height=620)
+
+        self._mouse = Gio.Settings.new(MOUSE)
+        self._touchpad = Gio.Settings.new(TOUCHPAD)
+        self._interface = Gio.Settings.new(INTERFACE)
+        self._winacux = None
+        if has_key(WINACUX, "cursor-trail"):
+            self._winacux = Gio.Settings.new(WINACUX)
+
+        header = Adw.HeaderBar()
+        self.set_content(header)
+
+        page = Adw.PreferencesPage()
+        header.set_title_widget(Adw.WindowTitle.new("Winacux Mouse", "Pointer, cursor and motion"))
+        self.add_child(page)
+
+        # ------------------------------------------------ cursor appearance
+        group = Adw.PreferencesGroup(title="Cursor",
+                                     description="The pointer artwork and how big it is.")
+        page.add_group(group)
+
+        self._theme_row = Adw.ComboRow(title="Cursor theme", subtitle="Current artwork")
+        group.add(self._theme_row)
+        self._themes = []
+        self._load_themes()
+
+        self._size_row = Adw.ComboRow(title="Cursor size")
+        group.add(self._size_row)
+        for size in CURSOR_SIZES:
+            self._size_row.append(str(size), str(size))
+        self._connect_size()
+
+        import_row = Adw.ActionRow(
+            title="Import a cursor pack…",
+            subtitle="Install a .zip / .ani / .cur pack (Sweezy, Bibata, your own…)")
+        button = Gtk.Button(label="Import…", valign=Gtk.Align.CENTER)
+        button.connect("clicked", lambda *_: self._on_import())
+        import_row.add_suffix(button)
+        import_row.set_activatable_widget(button)
+        group.add(import_row)
+
+        # ------------------------------------------------------- the trail
+        if self._winacux is not None:
+            trail = Adw.PreferencesGroup(
+                title="Cursor trail",
+                description="Physics trail: nodes are spring-coupled, stretched by "
+                            "their own velocity and pulled by gravity.")
+            page.add_group(trail)
+
+            trail_switch = Adw.SwitchRow(
+                title="Show trail",
+                subtitle="Off = stock pointer behaviour",
+                active=self._winacux.get_boolean("cursor-trail"))
+            trail_switch.connect("notify::active", self._on_trail_toggle)
+            trail.add(trail_switch)
+            trail.add(self._spin_row("Length", "cursor-trail-length", 6, 48, 1,
+                                     "Nodes in the chain"))
+            trail.add(self._spin_row("Thickness", "cursor-trail-spread", 2, 24, 1,
+                                     "Node radius in pixels"))
+            trail.add(self._spin_row("Gravity", "cursor-trail-gravity", 0.0, 4.0, 0.1,
+                                     "Extra downward pull"))
+            trail.add(self._spin_row("Fade", "cursor-trail-fade", 0.5, 0.98, 0.01,
+                                     "How fast old nodes disappear"))
+
+        # -------------------------------------------------- pointer options
+        options = Adw.PreferencesGroup(title="Pointer",
+                                       description="Motion, clicks and scrolling.")
+        page.add_group(options)
+        for label, schema, key, kind, extra in POINTER_OPTIONS:
+            if not has_key(schema, key):
+                continue
+            settings = self._mouse if schema == MOUSE else self._touchpad
+            if kind == "switch":
+                row = Adw.SwitchRow(title=label, active=settings.get_boolean(key))
+                row.connect("notify::active",
+                            lambda r, _p, _k=key, _s=settings: _s.set_boolean(_k, r.get_active()))
+            elif kind == "choice":
+                row = Adw.ComboRow(title=label)
+                mapping = {}
+                for name, value in extra.items():
+                    row.append(name, str(value))
+                    mapping[name] = value
+                row.set_selected(list(mapping.values()).index(settings.get_uint(key))
+                                 if settings.get_uint(key) in mapping.values() else 0)
+                row.connect("notify::selected", lambda r, _p, _m=mapping, _s=settings, _k=key:
+                            _s.set_uint(_k, _m[r.get_selected_item().get_string()]))
+            elif kind == "spin":
+                low, high, step = extra
+                row = Adw.SpinRow.new_with_range(low, high, step)
+                row.set_title(label)
+                row.set_value(settings.get_int(key))
+                row.connect("changed", lambda r, _k=key, _s=settings: _s.set_int(_k, r.get_value()))
+            else:
+                low, high, step = extra
+                row = Adw.ScaleRow.new_with_range(low, high, step)
+                row.set_title(label)
+                row.set_value(settings.get_double(key))
+                row.set_draw_value(True)
+                row.connect("changed", lambda r, _k=key, _s=settings:
+                            _s.set_double(_k, r.get_value()))
+            options.add(row)
+
+    # ------------------------------------------------------------- helpers
+
+    def _load_themes(self):
+        code, out, _err = run_tool("list")
+        names = []
+        for line in out.splitlines():
+            line = line.strip()
+            if not line or line.startswith("("):
+                continue
+            names.append(line.lstrip("* ").strip())
+        self._themes = names or ["Adwaita", "Breeze"]
+        for name in self._themes:
+            self._theme_row.append(name, name)
+
+        current = self._interface.get_string("cursor-theme") or "Adwaita"
+        for index, name in enumerate(self._themes):
+            if name == current:
+                self._theme_row.set_selected(index)
+                break
+        self._theme_row.connect("notify::selected", self._on_theme_selected)
+
+    def _connect_size(self):
+        current = self._interface.get_int("cursor-size")
+        for index, size in enumerate(CURSOR_SIZES):
+            if size == current:
+                self._size_row.set_selected(index)
+                break
+        self._size_row.connect("notify::selected", lambda *_: self._apply_size())
+
+    def _apply_size(self):
+        item = self._size_row.get_selected_item()
+        if item:
+            self._interface.set_int("cursor-size", int(item.get_string()))
+
+    def _on_theme_selected(self, *_args):
+        item = self._theme_row.get_selected_item()
+        if not item:
+            return
+        name = item.get_string()
+        self._interface.set_string("cursor-theme", name)
+        self._interface.set_boolean("gtk-cursor-theme-update", True)
+
+    def _on_import(self):
+        dialog = Gtk.FileChooserNative.new(
+            "Import a cursor pack", self,
+            Gtk.FileChooserAction.OPEN, "_Import", "_Cancel")
+        filters = Gtk.FileFilter.new()
+        filters.set_name("Cursor packs")
+        filters.add_pattern("*.zip")
+        filters.add_pattern("*.ani")
+        filters.add_pattern("*.cur")
+        filters.add_pattern("*.png")
+        dialog.add_filter(filters)
+        dialog.connect("response", self._on_import_response)
+        dialog.show()
+
+    def _on_import_response(self, dialog, response):
+        try:
+            if response == Gtk.ResponseType.ACCEPT:
+                path = dialog.get_file().get_path()
+                code, out, err = run_tool("import", path)
+                if code != 0:
+                    self._toast(f"Import failed: {err or 'unknown error'}")
+                    return
+                self._load_themes()
+                # The tool applies the new theme; reflect it in the combo.
+                applied = out.splitlines()[-1] if out else ""
+                self._toast(f"Installed {applied}")
+            dialog.destroy()
+        except Exception as exc:
+            self._toast(f"Import failed: {exc}")
+
+    def _toast(self, message):
+        window = Adw.Toast.new(message)
+        self.add_toast(window)
+
+    def _spin_row(self, title, key, low, high, step, subtitle):
+        row = Adw.SpinRow.new_with_range(low, high, step)
+        row.set_title(title)
+        row.set_subtitle(subtitle)
+        value_type = float if isinstance(low, float) else int
+        row.set_value(value_type(self._winacux.get_value(key).unpack()))
+        row.connect("changed",
+                    lambda r, _k=key: self._winacux.set_value(
+                        _k, float(r.get_value()) if isinstance(low, float) else int(r.get_value())))
+        return row
+
+    def _on_trail_toggle(self, row, *_args):
+        self._winacux.set_boolean("cursor-trail", row.get_active())
+
+
+class MouseApplication(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID, flags=0)
+
+    def do_activate(self):
+        window = MouseSettings(application=self)
+        window.present()
+
+
+def main():
+    if not shutil.which("gsettings"):
+        print("Winacux Mouse needs a GNOME session", file=sys.stderr)
+        return 1
+    MouseApplication().run([])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

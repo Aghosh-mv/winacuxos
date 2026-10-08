@@ -9,6 +9,7 @@
 #   wcx remove <package>     remove an app and every leftover file
 #   wcx vault create|open|close
 #   wcx dupes <dir>          find duplicate files
+#   wcx cursors list|import|apply   cursor themes (Cursor Studio)
 #   wcx help
 set -uo pipefail
 
@@ -202,6 +203,15 @@ cmd_dupes() {
     info "report saved to $WINACUX_HOME/duplicates.txt"
 }
 
+cmd_cursors() {
+    case "${1:-list}" in
+        list)   exec /usr/local/bin/wcx-cursors list ;;
+        import) shift; exec /usr/local/bin/wcx-cursors import "$@" ;;
+        apply)  shift; exec /usr/local/bin/wcx-cursors apply "$@" ;;
+        *) fail "usage: wcx cursors list|import <file>|apply <theme>"; return 1 ;;
+    esac
+}
+
 cmd_help() {
     cat <<'EOF'
 WinacuxOS - wcx
@@ -216,6 +226,9 @@ WinacuxOS - wcx
   wcx remove <package>       uninstall an app and all leftovers
   wcx vault create|open|close  encrypted personal vault
   wcx dupes <dir>            find duplicate files
+  wcx cursors list           list cursor themes
+  wcx cursors import <file>  import a .zip/.ani/.cur cursor pack
+  wcx mouse                  open the Mouse settings window
 EOF
 }
 
@@ -228,6 +241,8 @@ case "${1:-help}" in
     remove)   shift; cmd_remove "$@" ;;
     vault)    shift; cmd_vault "$@" ;;
     dupes)    shift; cmd_dupes "$@" ;;
+    cursors)  shift; cmd_cursors "$@" ;;
+    mouse)    exec /usr/local/bin/winacux-mouse ;;
     help|-h|--help) cmd_help ;;
     *) fail "unknown command: $1"; cmd_help; exit 1 ;;
 esac

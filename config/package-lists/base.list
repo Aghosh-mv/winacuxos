@@ -1,6 +1,5 @@
 # Core boot + hardware support. Everything needed for the live system to
 # reach a GNOME desktop on real hardware (Wi-Fi, audio, GPU, Bluetooth).
-linux-image-amd64
 systemd-sysv
 live-boot
 live-config

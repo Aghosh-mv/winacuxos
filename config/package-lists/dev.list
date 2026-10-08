@@ -9,6 +9,8 @@ python3
 python3-pip
 python3-venv
 python3-gi
+gir1.2-adw-1
+gir1.2-gtk-4.0
 git
 git-lfs
 nodejs
@@ -18,7 +20,7 @@ docker-compose
 shellcheck
 neovim
 ripgrep
-fd
+fd-find
 bat
 jq
 tree

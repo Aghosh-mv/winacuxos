@@ -1,0 +1,34 @@
+#!/bin/sh
+# Winacux Snapshot: take a Timeshift snapshot before a risky update, so a bad
+# kernel or desktop upgrade is one reboot away from being undone.
+#
+# Runs for every dpkg transaction but only fires for packages that can actually
+# break a running system, and only on an installed system (the live ISO runs
+# from RAM, where snapshots would be meaningless).
+set -e
+
+[ "$1" = "install" ] || [ "$1" = "upgrade" ] || exit 0
+[ "$2" = "configure" ] || [ "$2" = "unpack" ] || exit 0
+
+# Only act on installed systems with Timeshift configured.
+[ -f /etc/timeshift/timeshift.json ] || exit 0
+command -v timeshift >/dev/null 2>&1 || exit 0
+# Skip during image construction - there is no real disk to snapshot yet.
+[ -f /etc/winacuxos-installed ] || exit 0
+
+RISKY="linux-image- linux-headers- gnome-shell gdm3 systemd mesa- vulkan- xserver- xfce|gnome-core"
+
+for package in $DPKG_MAINTSCRIPT_PACKAGES; do
+    for pattern in $RISKY; do
+        case "$package" in
+            $pattern*)
+                echo "winacuxos: snapshotting before $package"
+                timeshift --create --comments "before $package update" >/dev/null 2>&1 || \
+                    echo "winacuxos: snapshot failed (continuing)"
+                exit 0
+                ;;
+        esac
+    done
+done
+
+exit 0

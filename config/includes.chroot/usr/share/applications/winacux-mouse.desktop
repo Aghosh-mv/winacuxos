@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Winacux Mouse
+GenericName=Pointer Settings
+Comment=Cursor themes, physics trail, speed, clicks and scrolling
+Exec=winacux-mouse
+Icon=input-mouse
+Terminal=false
+Categories=Settings;HardwareSettings;GTK;
+Keywords=cursor;pointer;mouse;trail;
+StartupNotify=true

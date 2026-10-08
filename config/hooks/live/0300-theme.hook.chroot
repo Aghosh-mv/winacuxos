@@ -1,0 +1,96 @@
+#!/bin/sh
+# Builds the WinacuxOS shell theme.
+#
+# Rather than shipping a full GNOME Shell stylesheet (thousands of lines that
+# rot on every GNOME update), we derive "Winacux" from whatever stylesheet the
+# installed GNOME provides and append our own overrides. If no stylesheet can
+# be found the build fails loudly instead of shipping a broken shell.
+set -e
+
+LOG=/var/log/winacuxos-build.log
+THEME_DIR=/usr/share/themes/Winacux
+
+find_base_css() {
+    for candidate in \
+        /usr/share/themes/Adwaita/gnome-shell.css \
+        /usr/share/themes/Adwaita-dark/gnome-shell.css \
+        /usr/share/gnome-shell/theme/Adwaita/gnome-shell.css \
+        /usr/share/gnome-shell/theme/gnome-shell.css
+    do
+        if [ -s "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    # Fall back to the compiled resource inside libgnome-shell.
+    for so in /usr/lib/gnome-shell/libgnome-shell.so /usr/lib/gnome-shell/libgnome-shell; do
+        [ -f "$so" ] || continue
+        if command -v gresource >/dev/null 2>&1; then
+            res=$(gresource list "$so" 2>/dev/null | grep -E 'theme/.*gnome-shell.*\.css$' | head -1)
+            [ -n "$res" ] || continue
+            if gresource extract "$so" "$res" > /tmp/winacux-base.css 2>/dev/null &&
+               [ -s /tmp/winacux-base.css ]; then
+                echo "/tmp/winacux-base.css"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+BASE=$(find_base_css) || {
+    echo "[winacuxos] FATAL: no base shell stylesheet found" | tee -a "$LOG"
+    exit 1
+}
+
+echo "[winacuxos] deriving the Winacux shell theme from $BASE" | tee -a "$LOG"
+rm -rf "$THEME_DIR"
+mkdir -p "$THEME_DIR"
+cp "$BASE" "$THEME_DIR/gnome-shell.css"
+
+cat >> "$THEME_DIR/gnome-shell.css" <<'CSS'
+
+/* ===================== WinacuxOS overrides ===================== */
+
+stage {
+    font-family: 'Inter';
+}
+
+/* top bar: glassy, like the mockup */
+#panel {
+    background-color: rgba(11, 18, 32, 0.55);
+    font-weight: 500;
+}
+
+#panel .panel-button {
+    color: #e6ecf5;
+}
+
+/* overview / app grid */
+.overview {
+    background-color: rgba(5, 9, 28, 0.72);
+}
+
+.search-entry {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 18px;
+    color: #f5f7fa;
+}
+
+.window-picker {
+    spacing: 12px;
+}
+
+.window-clone-border {
+    border: 2px solid #7b5cff;
+    border-radius: 12px;
+}
+
+.modal-dialog {
+    border-radius: 18px;
+    background-color: rgba(11, 18, 32, 0.92);
+}
+CSS
+
+echo "[winacuxos] Winacux shell theme written ($(wc -l < "$THEME_DIR/gnome-shell.css") lines)" | tee -a "$LOG"

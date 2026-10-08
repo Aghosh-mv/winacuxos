@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""wcx-cursors - WinacuxOS Cursor Studio.
+
+Converts Windows/Chrome cursor packs into native Linux Xcursor themes so any
+pack you legally own (Sweezy Cursors, Bibata, your own artwork...) can be used
+system-wide, animated frames included.
+
+  wcx-cursors list                      list installed cursor themes
+  wcx-cursors import FILE               import a .zip / .ani / .cur / .png
+  wcx-cursors import FILE --name NAME   choose the theme name
+  wcx-cursors apply THEME               switch the system cursor theme
+  wcx-cursors preview THEME             print the cursor name mapping
+
+Frames come from the source pack, are rendered to PNG by ImageMagick and are
+assembled into an Xcursor file by xcursorgen (x11-apps). Nothing is re-drawn,
+so the artwork you downloaded is the artwork you get.
+"""
+
+import argparse
+import configparser
+import os
+import re
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import zipfile
+from pathlib import Path
+
+USER_ICON_DIR = Path.home() / ".local/share/icons"
+SYSTEM_ICON_DIRS = [Path("/usr/share/icons"), USER_ICON_DIR]
+
+# The X11 cursor names every application looks for. A pack that only ships
+# left_ptr + pointer still yields a complete, usable theme.
+CURSOR_NAMES = {
+    "left_ptr": ["default", "left_ptr", "arrow", "cursor", "pointer"],
+    "text": ["text", "xterm", "ibeam", "edit"],
+    "crosshair": ["crosshair", "cross"],
+    "wait": ["wait", "watch", "spinning"],
+    "progress": ["progress", "left_ptr_watch", "half-busy"],
+    "not-allowed": ["not-allowed", "forbidden", "no-drop", "hand"],
+    "help": ["help", "question_arrow", "whats_this"],
+    "pointer": ["pointer", "hand2", "hand"],
+    "e-resize": ["e-resize", "e_resize", "size_e"],
+    "w-resize": ["w-resize", "w_resize", "size_w"],
+    "n-resize": ["n-resize", "n_resize", "size_n"],
+    "s-resize": ["s-resize", "s_resize", "size_s"],
+    "ne-resize": ["ne-resize", "ne_resize", "size_ne"],
+    "nw-resize": ["nw-resize", "nw_resize", "size_nw"],
+    "se-resize": ["se-resize", "se_resize", "size_se"],
+    "sw-resize": ["sw-resize", "sw_resize", "size_sw"],
+    "ns-resize": ["ns-resize", "size_ns"],
+    "ew-resize": ["ew-resize", "size_ew"],
+    "nesw-resize": ["nesw-resize", "nesw_resize", "size_nesw"],
+    "nwse-resize": ["nwse-resize", "nwse_resize", "size_nwse"],
+    "cell": ["cell"],
+    "crosshair2": ["crosshair2"],
+    "pencil": ["pencil"],
+    "icon": ["icon"],
+    "drag-copy": ["drag-copy", "dnd-copy"],
+    "drag-link": ["drag-link", "dnd-link"],
+    "drag-move": ["drag-move", "dnd-move"],
+    "alias": ["alias"],
+    "copy": ["copy"],
+    "move": ["move"],
+    "no-drop": ["no-drop"],
+    "grabbing": ["grabbing", "closedhand"],
+    "grab": ["grab", "openhand"],
+    "zoom-in": ["zoom_in", "zoom-in"],
+    "zoom-out": ["zoom_out", "zoom-out"],
+}
+
+# Animated packs name their files after the Windows cursor role; match loosely.
+PACK_ROLE_PATTERNS = {
+    "left_ptr": r"pointer|arrow|default|left_ptr",
+    "text": r"text|ibeam|typing|\bi\b",
+    "crosshair": r"crosshair|cross\b",
+    "wait": r"wait|busy|watch",
+    "progress": r"progress|spinner|loading",
+    "not-allowed": r"not[-_ ]?allowed|forbidden|unavailable|stop",
+    "help": r"help|question",
+    "pointer": r"(^|[^t])hand|pointer|link",
+    "e-resize": r"e[-_ ]?resize|size[-_ ]?e\b",
+    "w-resize": r"w[-_ ]?resize|size[-_ ]?w\b",
+    "n-resize": r"n[-_ ]?resize|size[-_ ]?n\b",
+    "s-resize": r"s[-_ ]?resize|size[-_ ]?s\b",
+    "ne-resize": r"ne[-_ ]?resize|size[-_ ]?ne\b",
+    "nw-resize": r"nw[-_ ]?resize|size[-_ ]?nw\b",
+    "se-resize": r"se[-_ ]?resize|size[-_ ]?se\b",
+    "sw-resize": r"sw[-_ ]?resize|size[-_ ]?sw\b",
+}
+
+CREDITS = """WinacuxOS Cursor Studio
+=======================
+This theme was imported from a cursor pack you provided.
+
+The original artwork is not included in this file. Cursor packs such as
+Sweezy Cursors (https://sweezy-cursors.com/) are free for personal use but may
+not be redistributed - so WinacuxOS converts your own copy at import time
+instead of shipping it.
+
+Free/libre cursor themes that CAN be redistributed and shipped with WinacuxOS:
+  Breeze      - KDE, MIT
+  Adwaita     - GNOME, LGPL
+  Bibata      - community, MIT
+"""
+
+
+def run(cmd, **kwargs):
+    return subprocess.run(cmd, check=True, capture_output=True, text=True, **kwargs)
+
+
+def slugify(name):
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return slug or "winacux-cursor"
+
+
+# --------------------------------------------------------------- .ani parsing
+
+def parse_ani(path):
+    """Return (frame_files, delays_ms) from a Windows animated cursor."""
+    data = Path(path).read_bytes()
+    if data[:4] != b"RIFF" or data[8:12] != b"ACON":
+        raise ValueError("not a RIFF/ACON animated cursor file")
+
+    pos = 12
+    frames = []
+    delays = []
+    pending_delay = 100
+
+    while pos + 8 <= len(data):
+        cid = data[pos:pos + 4]
+        (size,) = struct.unpack("<I", data[pos + 4:pos + 8])
+        body = data[pos + 8:pos + 8 + size]
+        if len(body) % 2:
+            size += 1
+        pos += 8 + size + (size % 2)
+
+        if cid == b"rate":
+            # rate chunk: one DWORD per frame in 1/60s units
+            count = len(body) // 4
+            jiffies = struct.unpack("<%dI" % count, body[:count * 4])
+            delays = [max(20, int(j * 1000 / 60)) for j in jiffies] or []
+        elif cid == b"fram" or cid == b"LIST":
+            # A fram chunk is a LIST of embedded icon/cursor files.
+            offset = 4 if cid == b"LIST" and body[:4] in (b"fram", b"LIST") else 0
+            while offset + 8 <= len(body):
+                icid = body[offset:offset + 4]
+                (isize,) = struct.unpack("<I", body[offset + 4:offset + 8])
+                payload = body[offset + 8:offset + 8 + isize]
+                offset += 8 + isize + (isize % 2)
+                if icid in (b"icon", b"cur "):
+                    frames.append(payload)
+
+    return frames, (delays or [100] * len(frames))
+
+
+# -------------------------------------------------------- frame -> PNG -> Xcursor
+
+def frames_to_pngs(frame_payloads, workdir):
+    """Render embedded icon/cursor frames to PNGs using ImageMagick."""
+    pngs = []
+    magick = shutil.which("magick") or shutil.which("convert")
+    if not magick:
+        raise RuntimeError("ImageMagick is required to convert cursor frames")
+
+    for index, payload in enumerate(frame_payloads):
+        raw = workdir / f"frame{index:03d}.cur"
+        png = workdir / f"frame{index:03d}.png"
+        raw.write_bytes(payload)
+        # CUR is ICO with a 2-byte hotspot header; ImageMagick reads both.
+        result = subprocess.run([magick, f"cur:{raw}", "-coalesce", str(png)],
+                                capture_output=True, text=True)
+        if result.returncode != 0 or not png.exists():
+            # Some frames are plain ICO/PNG payloads.
+            subprocess.run([magick, f"icon:{raw}", "-coalesce", str(png)],
+                           capture_output=True, text=True)
+        if png.exists():
+            pngs.append(png)
+    return pngs
+
+
+def identify_size(png):
+    try:
+        out = run(["magick", "identify", "-format", "%w %h", str(png)]).stdout.split()
+        return int(out[0]), int(out[1])
+    except Exception:
+        return 32, 32
+
+
+def build_xcursor(pngs, delays, target):
+    """Assemble PNGs into an animated Xcursor file via xcursorgen."""
+    xcursorgen = shutil.which("xcursorgen")
+    if not xcursorgen:
+        raise RuntimeError("xcursorgen (package x11-apps) is required")
+
+    config = xcursorgen.with_name("winacux-cursors.cfg")
+    lines = []
+    for index, png in enumerate(pngs):
+        width, height = identify_size(png)
+        xhot, yhot = width // 2, height // 2
+        delay = delays[index] if index < len(delays) else 100
+        lines.append(f"{width} {height} {xhot} {yhot} {png} {delay}")
+    config.write_text("\n".join(lines) + "\n")
+    run([str(xcursorgen), str(config), str(target)])
+    config.unlink(missing_ok=True)
+    return target
+
+
+# ------------------------------------------------------------------ themes
+
+def collect_theme_sources(workdir):
+    """Group files found in an extracted pack by the cursor role they play."""
+    roles = {}
+    files = [p for p in workdir.rglob("*") if p.is_file()]
+    for path in files:
+        suffix = path.suffix.lower()
+        if suffix not in (".ani", ".cur", ".png"):
+            continue
+        stem = path.stem.lower()
+        for role, pattern in PACK_ROLE_PATTERNS.items():
+            if re.search(pattern, stem):
+                roles.setdefault(role, []).append(path)
+                break
+    return roles
+
+
+def install_theme(name, role_files, workdir):
+    theme_dir = USER_ICON_DIR / name
+    cursor_dir = theme_dir / "cursor"
+    cursor_dir.mkdir(parents=True, exist_ok=True)
+
+    installed = {}
+    for role, paths in role_files.items():
+        primary = None
+        # Prefer animated sources, then .cur, then .png.
+        paths = sorted(paths, key=lambda p: (
+            0 if p.suffix.lower() == ".ani" else 1 if p.suffix.lower() == ".cur" else 2))
+        for index, source in enumerate(paths):
+            target = cursor_dir / (role if index == 0 else f"{role}-{index}")
+            try:
+                if source.suffix.lower() == ".ani":
+                    frames, delays = parse_ani(source)
+                    pngs = frames_to_pngs(frames, workdir)
+                elif source.suffix.lower() == ".cur":
+                    pngs = frames_to_pngs([source.read_bytes()], workdir)
+                else:
+                    pngs = [source]
+                build_xcursor(pngs, delays if source.suffix.lower() == ".ani" else [100], target)
+                installed[role] = target.name
+                primary = primary or target.name
+            except Exception as exc:  # keep going: one bad frame is not fatal
+                print(f"  ! {source.name}: {exc}", file=sys.stderr)
+        if primary:
+            installed.setdefault(role, primary)
+
+    if not installed:
+        raise RuntimeError("no usable cursor files found in this pack")
+
+    # A complete cursor.theme: every alias maps to something we actually have.
+    alias_targets = {}
+    for canonical, aliases in CURSOR_NAMES.items():
+        chosen = installed.get(canonical)
+        if not chosen:
+            chosen = next((installed[r] for r in ("left_ptr", "pointer")
+                           if r in installed), None)
+        if chosen:
+            for alias in aliases:
+                alias_targets[alias] = chosen
+
+    lines = ["[Icon Theme]", "Name=" + name, "Comment=Imported by WinacuxOS Cursor Studio",
+             "Inherits=Adwaita", ""]
+    lines += [f"{size} {path.name}" for size in (24, 32, 48, 64, 96, 128)
+              for path in [cursor_dir / installed.get("left_ptr", "")] if path.exists()]
+    (theme_dir / "index.theme").write_text("\n".join(lines) + "\n")
+
+    (cursor_dir / "cursor.theme").write_text(
+        "[Icon Theme]\nName=" + name + "\nInherits=Adwaita\n\n"
+        + "\n".join(f"{alias} {target}" for alias, target in sorted(alias_targets.items()))
+        + "\n")
+    (theme_dir / "README.txt").write_text(CREDITS)
+
+    return theme_dir, sorted(installed)
+
+
+def list_themes():
+    themes = {}
+    for base in SYSTEM_ICON_DIRS:
+        if not base.is_dir():
+            continue
+        for entry in sorted(base.iterdir()):
+            if (entry / "cursor" / "cursor.theme").exists() or \
+               (entry / "cursor.theme").exists():
+                themes[entry.name] = entry
+    return themes
+
+
+def current_theme():
+    try:
+        return run(["gsettings", "get", "org.gnome.desktop.interface",
+                    "cursor-theme"]).stdout.strip().strip("'")
+    except Exception:
+        return ""
+
+
+def apply_theme(name, size=None):
+    if size is None:
+        try:
+            size = run(["gsettings", "get", "org.gnome.desktop.interface",
+                        "cursor-size"]).stdout.strip()
+        except Exception:
+            size = "24"
+    run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-theme", name])
+    run(["gsettings", "set", "org.gnome.desktop.interface", "cursor-size", str(size)])
+    print(f"cursor theme = {name} ({size}px)")
+
+
+def import_pack(path, name=None):
+    path = Path(path).expanduser()
+    if not path.exists():
+        raise SystemExit(f"no such file: {path}")
+
+    workdir = Path(tempfile.mkdtemp(prefix="winacux-cursor-"))
+    try:
+        if path.suffix.lower() == ".zip":
+            with zipfile.ZipFile(path) as archive:
+                archive.extractall(workdir / "pack")
+            sources = workdir / "pack"
+            default_name = path.stem
+        else:
+            sources = workdir / "pack"
+            sources.mkdir()
+            shutil.copy(path, sources / path.name)
+            default_name = path.stem
+
+        role_files = collect_theme_sources(sources)
+        if not role_files:
+            raise SystemExit(
+                "no .ani/.cur/.png cursor files inside - is this a cursor pack?")
+
+        theme_name = f"Winacux-{slugify(name or default_name)}"
+        theme_dir, roles = install_theme(theme_name, role_files, workdir)
+        apply_theme(theme_name)
+        print(f"installed {theme_dir}")
+        print(f"cursor roles: {', '.join(roles)}")
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def preview(name):
+    path = USER_ICON_DIR / name / "cursor" / "cursor.theme"
+    if not path.exists():
+        raise SystemExit(f"theme not found: {name}")
+    print(path.read_text())
+
+
+def main():
+    parser = argparse.ArgumentParser(description="WinacuxOS Cursor Studio")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("list", help="list installed cursor themes")
+
+    imp = sub.add_parser("import", help="import a cursor pack")
+    imp.add_argument("file")
+    imp.add_argument("--name")
+
+    app = sub.add_parser("apply", help="switch cursor theme")
+    app.add_argument("theme")
+    app.add_argument("--size")
+
+    prev = sub.add_parser("preview", help="show the cursor name mapping")
+    prev.add_argument("theme")
+
+    args = parser.parse_args()
+
+    if args.command == "list":
+        active = current_theme()
+        for name in sorted(list_themes()):
+            print(f"{'*' if name == active else ' '} {name}")
+        print(f"\n(active: {active or 'default'})")
+    elif args.command == "import":
+        import_pack(args.file, args.name)
+    elif args.command == "apply":
+        apply_theme(args.theme, args.size)
+    elif args.command == "preview":
+        preview(args.theme)
+
+
+if __name__ == "__main__":
+    main()

@@ -45,6 +45,9 @@ docker run --rm --privileged \
         if [ "$CLEAN" = "--clean" ]; then
             echo "==> lb clean --all"
             lb clean --all || true
+            # lb clean keeps the bootstrap cache, which silently restores a
+            # chroot from a previous architecture. nuke it explicitly.
+            rm -rf /build/cache /build/chroot /build/auto /build/build
         fi
 
         echo "==> generating config"

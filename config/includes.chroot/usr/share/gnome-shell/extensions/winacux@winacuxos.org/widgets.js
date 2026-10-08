@@ -12,6 +12,8 @@ import Clutter from 'gi://Clutter';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 
+import {createAICard} from './ai.js';
+
 const BRAND = {
     name: 'WinacuxOS',
     version: 'v1.0.0',
@@ -302,6 +304,7 @@ export function createWidgetColumn() {
     });
 
     const usage = usageCard();
+    column.add_child(createAICard());
     column.add_child(systemCard());
     column.add_child(weatherCard());
     column.add_child(usage);

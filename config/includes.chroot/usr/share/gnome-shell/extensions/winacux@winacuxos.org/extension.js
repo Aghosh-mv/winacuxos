@@ -9,6 +9,7 @@ import {createWidgetColumn} from './widgets.js';
 import {createPillsBar} from './pills.js';
 import {createLiveWallpaper} from './wallpaper.js';
 import {FlowEngine} from './flow.js';
+import {CursorPhysics} from './cursorfx.js';
 
 export default class WinacuxExtension extends Extension {
     enable() {
@@ -31,6 +32,10 @@ export default class WinacuxExtension extends Extension {
         /* Live wallpaper */
         if (this._settings.get_boolean('live-wallpaper'))
             this._wallpaper = createLiveWallpaper(this);
+
+        /* Cursor physics trail */
+        this._cursorFx = new CursorPhysics(this);
+        this._cursorFx.enable();
 
         this._settingsChanged = this._settings.connect('changed', () => {
             const enabled = this._settings.get_boolean('live-wallpaper');
@@ -64,6 +69,10 @@ export default class WinacuxExtension extends Extension {
         if (this._flow) {
             this._flow.disable();
             this._flow = null;
+        }
+        if (this._cursorFx) {
+            this._cursorFx.disable();
+            this._cursorFx = null;
         }
         this._removeStyle();
     }
