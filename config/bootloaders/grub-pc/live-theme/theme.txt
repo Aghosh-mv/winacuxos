@@ -1,0 +1,22 @@
+# WinacuxOS GRUB theme.
+# Deliberately font-free: GRUB only has a tiny built-in bitmap font here, and
+# referencing a font that is not loaded makes the menu render as garbage.
+
+title-text: "WinacuxOS 1.0"
+desktop-color: "#05091c"
+desktop-image: "background.png"
+text-color: "#c8d2e0"
+title-color: "#f5f7fa"
+
++ boot_menu {
+    left = 22%
+    top = 55%
+    width = 56%
+    height = 40%
+    item_color = "#9fb0c8"
+    item_selected_color = "#ffffff"
+    item_height = 26
+    item_spacing = 4
+    item_padding = 6
+    selected_item_color = "#7b5cff"
+}

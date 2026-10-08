@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WinacuxOS wallpaper: dusk lake, mountain silhouettes, city skyline, the
+     glowing arc from the mockup, and the wordmark. Rendered to PNG by
+     scripts/make-assets.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" width="3840" height="2160">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#05091C"/>
+      <stop offset="0.35" stop-color="#0E1E44"/>
+      <stop offset="0.62" stop-color="#3A2A6B"/>
+      <stop offset="0.78" stop-color="#8A3F72"/>
+      <stop offset="0.88" stop-color="#D9623F"/>
+      <stop offset="1" stop-color="#F0A45C"/>
+    </linearGradient>
+
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C96A3F"/>
+      <stop offset="0.25" stop-color="#5A3A6E"/>
+      <stop offset="0.7" stop-color="#16264F"/>
+      <stop offset="1" stop-color="#0A1330"/>
+    </linearGradient>
+
+    <radialGradient id="arcGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#9BC8FF" stop-opacity="0.0"/>
+      <stop offset="0.92" stop-color="#BBD9FF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#EAF4FF" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <linearGradient id="arcStroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FB6FF" stop-opacity="0.15"/>
+      <stop offset="0.5" stop-color="#D9E9FF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#A06BFF" stop-opacity="0.35"/>
+    </linearGradient>
+
+    <linearGradient id="mountFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2A5E"/>
+      <stop offset="1" stop-color="#1A1A42"/>
+    </linearGradient>
+
+    <linearGradient id="mountNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#141A3C"/>
+      <stop offset="1" stop-color="#0B1026"/>
+    </linearGradient>
+
+    <radialGradient id="vignette" cx="0.5" cy="0.45" r="0.75">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#00030C" stop-opacity="0.75"/>
+    </radialGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+
+    <filter id="tinyGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+
+    <linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.62" stop-color="#FFFFFF"/>
+      <stop offset="0.78" stop-color="#7FD4FF"/>
+      <stop offset="1" stop-color="#7B7BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sky -->
+  <rect width="3840" height="1500" fill="url(#sky)"/>
+
+  <!-- stars -->
+  <g fill="#FFFFFF">
+    <circle cx="240" cy="180" r="2.5" opacity="0.9"/>
+    <circle cx="520" cy="320" r="1.8" opacity="0.7"/>
+    <circle cx="810" cy="140" r="2.2" opacity="0.8"/>
+    <circle cx="1120" cy="260" r="1.6" opacity="0.6"/>
+    <circle cx="1480" cy="120" r="2.6" opacity="0.9"/>
+    <circle cx="1760" cy="300" r="1.7" opacity="0.55"/>
+    <circle cx="2100" cy="180" r="2.1" opacity="0.75"/>
+    <circle cx="2480" cy="360" r="1.5" opacity="0.5"/>
+    <circle cx="2760" cy="150" r="2.4" opacity="0.85"/>
+    <circle cx="3060" cy="280" r="1.9" opacity="0.6"/>
+    <circle cx="3400" cy="200" r="2.3" opacity="0.8"/>
+    <circle cx="3680" cy="360" r="1.6" opacity="0.55"/>
+    <circle cx="700" cy="520" r="1.4" opacity="0.45"/>
+    <circle cx="1600" cy="470" r="1.5" opacity="0.5"/>
+    <circle cx="2600" cy="520" r="1.4" opacity="0.45"/>
+  </g>
+
+  <!-- the great arc (planet limb) sweeping over the right side -->
+  <g opacity="0.9">
+    <circle cx="3160" cy="1180" r="1080" fill="none" stroke="url(#arcGlow)" stroke-width="150" filter="url(#softGlow)"/>
+    <circle cx="3160" cy="1180" r="1080" fill="none" stroke="url(#arcStroke)" stroke-width="10"/>
+  </g>
+
+  <!-- far mountain range -->
+  <path d="M0 1420 L260 1300 L420 1352 L640 1224 L880 1340 L1120 1268 L1400 1392
+           L1650 1284 L1900 1360 L2150 1250 L2420 1372 L2700 1290 L2960 1396
+           L3220 1300 L3480 1368 L3700 1310 L3840 1352 L3840 1500 L0 1500 Z"
+        fill="url(#mountFar)" opacity="0.9"/>
+
+  <!-- city skyline silhouette -->
+  <g fill="#0B1030">
+    <rect x="1180" y="1330" width="26" height="170"/>
+    <rect x="1230" y="1352" width="18" height="148"/>
+    <rect x="1272" y="1300" width="30" height="200"/>
+    <rect x="1326" y="1366" width="16" height="134"/>
+    <rect x="1364" y="1318" width="24" height="182"/>
+    <rect x="1412" y="1348" width="20" height="152"/>
+    <rect x="1456" y="1288" width="34" height="212"/>
+    <rect x="1512" y="1360" width="18" height="140"/>
+    <rect x="1552" y="1332" width="26" height="168"/>
+    <rect x="1600" y="1372" width="20" height="128"/>
+  </g>
+  <!-- skyline window lights -->
+  <g fill="#FFC98A">
+    <rect x="1278" y="1314" width="5" height="7" opacity="0.9"/>
+    <rect x="1288" y="1330" width="5" height="7" opacity="0.6"/>
+    <rect x="1464" y="1302" width="6" height="8" opacity="0.9"/>
+    <rect x="1476" y="1322" width="6" height="8" opacity="0.5"/>
+    <rect x="1372" y="1332" width="5" height="7" opacity="0.75"/>
+    <rect x="1186" y="1346" width="5" height="7" opacity="0.6"/>
+    <rect x="1560" y="1348" width="5" height="7" opacity="0.7"/>
+    <rect x="1418" y="1364" width="5" height="7" opacity="0.5"/>
+  </g>
+  <ellipse cx="1415" cy="1492" rx="330" ry="26" fill="#FF9A4D" opacity="0.35" filter="url(#softGlow)"/>
+
+  <!-- near mountain range -->
+  <path d="M0 1470 L300 1392 L520 1452 L820 1360 L1120 1462 L1450 1378 L1760 1466
+           L2080 1386 L2400 1472 L2720 1398 L3040 1478 L3360 1406 L3660 1470 L3840 1424
+           L3840 1520 L0 1520 Z"
+        fill="url(#mountNear)"/>
+
+  <!-- water -->
+  <rect y="1500" width="3840" height="660" fill="url(#water)"/>
+
+  <!-- reflections -->
+  <g opacity="0.5">
+    <rect x="1180" y="1512" width="26" height="120" fill="#FFC98A" opacity="0.25" filter="url(#softGlow)"/>
+    <rect x="1456" y="1512" width="34" height="150" fill="#FFC98A" opacity="0.22" filter="url(#softGlow)"/>
+    <rect x="1272" y="1512" width="30" height="100" fill="#FFD9A8" opacity="0.18" filter="url(#softGlow)"/>
+  </g>
+  <g stroke="#FFD9A8" stroke-linecap="round" opacity="0.35">
+    <line x1="1240" y1="1660" x2="1600" y2="1660" stroke-width="4"/>
+    <line x1="1300" y1="1700" x2="1560" y2="1700" stroke-width="3"/>
+    <line x1="1270" y1="1760" x2="1590" y2="1760" stroke-width="3"/>
+  </g>
+
+  <!-- water highlight streaks -->
+  <g stroke="#FFFFFF" stroke-linecap="round" opacity="0.10">
+    <line x1="200" y1="1560" x2="900" y2="1560" stroke-width="3"/>
+    <line x1="1600" y1="1620" x2="2400" y2="1620" stroke-width="3"/>
+    <line x1="2600" y1="1680" x2="3500" y2="1680" stroke-width="4"/>
+    <line x1="400" y1="1760" x2="1200" y2="1760" stroke-width="4"/>
+    <line x1="1900" y1="1860" x2="2900" y2="1860" stroke-width="5"/>
+    <line x1="700" y1="1980" x2="1700" y2="1980" stroke-width="5"/>
+    <line x1="2400" y1="2060" x2="3300" y2="2060" stroke-width="6"/>
+  </g>
+
+  <!-- wordmark block -->
+  <g transform="translate(1920 830)">
+    <!-- logo mark -->
+    <g transform="translate(-140 -230)">
+      <path d="M0 0 L46 138 L92 24 L138 138 L184 0"
+            fill="none" stroke="url(#wordmark)" stroke-width="24"
+            stroke-linecap="round" stroke-linejoin="round" filter="url(#tinyGlow)"/>
+    </g>
+    <text x="0" y="80" text-anchor="middle"
+          font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+          font-size="170" font-weight="700" letter-spacing="-4"
+          fill="#F5F7FA">Winacux<tspan fill="#5FD2FF">OS</tspan></text>
+    <text x="0" y="180" text-anchor="middle"
+          font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+          font-size="62" font-weight="400" letter-spacing="6"
+          fill="#C8D2E0">Your OS. Your Way.</text>
+  </g>
+
+  <!-- vignette -->
+  <rect width="3840" height="2160" fill="url(#vignette)"/>
+</svg>

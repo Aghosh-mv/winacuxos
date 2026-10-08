@@ -1,0 +1,24 @@
+/* WinacuxOS shell extension settings schema. */
+
+<gsettings schema="org.gnome.shell.extensions.winacux" gettext-domain="winacuxos">
+  <key name="show-widgets" type="b">
+    <default>true</default>
+    <summary>Show desktop widget cards</summary>
+    <description>Show the WinacuxOS system, weather, usage and calendar cards.</description>
+  </key>
+  <key name="show-pills" type="b">
+    <default>true</default>
+    <summary>Show workspace pills in the top bar</summary>
+    <description>Show the 1 2 3 4 workspace switcher buttons.</description>
+  </key>
+  <key name="live-wallpaper" type="b">
+    <default>true</default>
+    <summary>Enable live wallpaper animation</summary>
+    <description>Animate the desktop wallpaper with a slow pan and glow.</description>
+  </key>
+  <key name="wallpaper-art" type="s">
+    <default>''</default>
+    <summary>Custom wallpaper artwork</summary>
+    <description>Absolute path to an image file. Empty uses the default WinacuxOS artwork.</description>
+  </key>
+</gsettings>

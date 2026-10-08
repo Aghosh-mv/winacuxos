@@ -1,0 +1,9 @@
+{
+  "name": "Focus",
+  "workspace": 3,
+  "apps": [
+    "org.gnome.TextEditor",
+    "org.gnome.Clock"
+  ],
+  "files": []
+}

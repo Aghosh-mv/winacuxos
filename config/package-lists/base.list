@@ -1,0 +1,35 @@
+# Core boot + hardware support. Everything needed for the live system to
+# reach a GNOME desktop on real hardware (Wi-Fi, audio, GPU, Bluetooth).
+linux-image-amd64
+systemd-sysv
+live-boot
+live-config
+live-config-systemd
+network-manager
+bluez
+pipewire
+wireplumber
+pipewire-pulse
+alsa-utils
+alsa-topology-conf
+pulseaudio-utils
+sudo
+locales
+kbd
+console-setup
+plymouth
+plymouth-themes
+initramfs-tools
+usbutils
+pciutils
+lsof
+less
+nano
+vim-tiny
+git
+ca-certificates
+curl
+wget
+gnome-disk-utility
+gnome-power-manager
+network-manager-openvpn-gnome

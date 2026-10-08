@@ -1,0 +1,12 @@
+{
+  "name": "Code",
+  "workspace": 2,
+  "apps": [
+    "org.gnome.Terminal",
+    "org.gnome.TextEditor",
+    "org.gnome.Files"
+  ],
+  "files": [
+    "~/Projects"
+  ]
+}

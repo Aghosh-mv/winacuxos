@@ -1,0 +1,9 @@
+PRETTY_NAME="WinacuxOS 1.0"
+NAME="WinacuxOS"
+VERSION_ID="1.0"
+VERSION="1.0"
+ID=winacuxos
+ID_LIKE=debian
+ANSI_COLOR="38;2;77;163;255"
+LOGO=winacux-logo
+VARIANT="GNOME"

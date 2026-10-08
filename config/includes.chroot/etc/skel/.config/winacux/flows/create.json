@@ -1,0 +1,13 @@
+{
+  "name": "Create",
+  "workspace": 4,
+  "apps": [
+    "org.gnome.Files",
+    "org.gnome.Photos",
+    "org.gnome.Music",
+    "org.gnome.TextEditor"
+  ],
+  "files": [
+    "~/Pictures"
+  ]
+}

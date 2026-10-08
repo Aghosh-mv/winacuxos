@@ -1,0 +1,9 @@
+{
+  "uuid": "winacux@winacuxos.org",
+  "name": "WinacuxOS Desktop",
+  "description": "WinacuxOS identity: desktop widget cards, workspace pills, live wallpaper, and the Winacux Flow engine.",
+  "shell-version": ["45", "46", "47", "48"],
+  "url": "https://winacuxos.org",
+  "settings-schema": "org.gnome.shell.extensions.winacux",
+  "version": 1
+}

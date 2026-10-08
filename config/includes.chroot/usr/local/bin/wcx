@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# wcx - the WinacuxOS command line.
+#
+#   wcx flow <name>          Winacux Flow: open an intent workspace
+#   wcx flows                list available flows
+#   wcx ask <question>       ask the local Winacux AI
+#   wcx doctor               diagnose the system (Safe Mode)
+#   wcx snapshot create|restore|list|delete
+#   wcx remove <package>     remove an app and every leftover file
+#   wcx vault create|open|close
+#   wcx dupes <dir>          find duplicate files
+#   wcx help
+set -uo pipefail
+
+WINACUX_HOME="${WINACUX_HOME:-$HOME/.config/winacux}"
+FLOW_DIR="$WINACUX_HOME/flows"
+ACTIVE_FILE="$WINACUX_HOME/active-flow"
+AI_HOST="${WINACUX_AI_HOST:-127.0.0.1}"
+AI_PORT="${WINACUX_AI_PORT:-8080}"
+AI_MODEL="${WINACUX_AI_MODEL:-winacux-local}"
+VAULT_DIR="${WINACUX_VAULT:-$HOME/Vault}"
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+info() { printf '\033[36m::\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m!!\033[0m %s\n' "$*"; }
+fail() { printf '\033[31mxx\033[0m %s\n' "$*" >&2; }
+
+cmd_flow() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        fail "usage: wcx flow <name>   (see: wcx flows)"
+        return 1
+    fi
+    if [ ! -f "$FLOW_DIR/$name.json" ]; then
+        fail "no flow named '$name'"
+        wcx_help_flows
+        return 1
+    fi
+    mkdir -p "$WINACUX_HOME"
+    printf '%s' "$name" > "$ACTIVE_FILE"
+    info "Flow '$name' triggered"
+}
+
+cmd_flows() {
+    if [ ! -d "$FLOW_DIR" ]; then
+        fail "no flows directory at $FLOW_DIR"
+        return 1
+    fi
+    for f in "$FLOW_DIR"/*.json; do
+        [ -e "$f" ] || continue
+        name="$(basename "$f" .json)"
+        apps="$(sed -n 's/.*"apps"[^]]*]//p' "$f" | tr -d '[]"' | tr ',' '\n' | wc -l | tr -d ' ')"
+        ws="$(sed -n 's/.*"workspace"[^0-9]*\([0-9]\+\).*/\1/p' "$f")"
+        bold "$name"
+        printf '    workspace %s, %s apps\n' "${ws:-0}" "${apps:-0}"
+    done
+}
+
+wcx_help_flows() {
+    printf '    available: '
+    (cd "$FLOW_DIR" 2>/dev/null && ls -1 *.json 2>/dev/null | sed 's/\.json//' | tr '\n' ' ')
+    printf '\n'
+}
+
+cmd_ask() {
+    local question="$*"
+    if [ -z "$question" ]; then
+        fail "usage: wcx ask <question>"
+        return 1
+    fi
+    if ! command -v curl >/dev/null; then
+        fail "curl not found"
+        return 1
+    fi
+    local payload
+    payload=$(python3 - "$question" "$AI_MODEL" <<'PY'
+import json, sys
+print(json.dumps({
+    "model": sys.argv[2],
+    "messages": [{"role": "user", "content": sys.argv[1]}],
+    "stream": False,
+}))
+PY
+) || { fail "could not build request"; return 1; }
+
+    local response
+    response=$(curl -s --max-time 120 \
+        -H 'Content-Type: application/json' \
+        -d "$payload" \
+        "http://$AI_HOST:$AI_PORT/v1/chat/completions")
+
+    if [ -z "$response" ]; then
+        fail "Winacux AI is not answering on $AI_HOST:$AI_PORT"
+        info "start it with: sudo systemctl start winacux-ai"
+        return 1
+    fi
+
+    printf '%s' "$response" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print("could not parse AI response")
+    raise SystemExit(1)
+for choice in data.get("choices", []):
+    print(choice.get("message", {}).get("content", "").strip())
+'
+}
+
+cmd_doctor() {
+    local problems=0
+    bold "WinacuxOS diagnostics"
+    printf '    %s\n' "$(date)"
+
+    info "disk space"
+    df -h / | tail -1
+
+    info "memory"
+    free -h
+
+    info "failed services"
+    if systemctl --failed --no-legend --plain 2>/dev/null | grep -q .; then
+        systemctl --failed --no-legend --plain
+        problems=$((problems + 1))
+    else
+        echo "    none"
+    fi
+
+    info "recent critical kernel messages"
+    journalctl -p err -b --no-pager 2>/dev/null | tail -15 || echo "    (unavailable)"
+
+    info "package database"
+    if dpkg --audit 2>/dev/null | grep -q .; then
+        dpkg --audit
+        problems=$((problems + 1))
+    else
+        echo "    clean"
+    fi
+
+    info "pending updates"
+    apt list --upgradable 2>/dev/null | tail -n +2 | head -10
+
+    info "snapshots"
+    timeshift --list 2>/dev/null | tail -5 || echo "    (timeshift not installed)"
+
+    if [ "$problems" -eq 0 ]; then
+        printf '\n\033[32mOK\033[0m no blocking problems found\n'
+    else
+        printf '\n\033[33m!\033[0m %s problem group(s) found - try: wcx snapshot create\n' "$problems"
+    fi
+    return 0
+}
+
+cmd_snapshot() {
+    local action="${1:-list}"
+    case "$action" in
+        create)   timeshift --create --comments "WinacuxOS manual snapshot" ;;
+        restore)  timeshift --restore ;;
+        list)     timeshift --list ;;
+        delete)   timeshift --delete "$2" ;;
+        *) fail "usage: wcx snapshot create|restore|list|delete <n>"; return 1 ;;
+    esac
+}
+
+cmd_remove() {
+    local pkg="$1"
+    if [ -z "$pkg" ]; then
+        fail "usage: wcx remove <package>"
+        return 1
+    fi
+    info "purging $pkg and its dependencies"
+    sudo apt-get purge -y "$pkg"
+    info "removing orphaned packages and caches"
+    sudo apt-get autoremove --purge -y
+    sudo apt-get clean
+    info "done - $pkg and its leftovers are gone"
+}
+
+cmd_vault() {
+    local action="${1:-}"
+    case "$action" in
+        create)
+            mkdir -p "$VAULT_DIR"
+            gocryptfs -t "$VAULT_DIR.xfs" "$VAULT_DIR"
+            echo "$VAULT_DIR" > "$WINACUX_HOME/vault-path"
+            ;;
+        open)
+            [ -f "$VAULT_DIR.xfs" ] || { fail "no vault found at $VAULT_DIR.xfs"; return 1; }
+            gocryptfs "$VAULT_DIR.xfs" "$VAULT_DIR"
+            ;;
+        close)
+            fusermount -u "$VAULT_DIR" 2>/dev/null || fail "vault not mounted"
+            ;;
+        *) fail "usage: wcx vault create|open|close"; return 1 ;;
+    esac
+}
+
+cmd_dupes() {
+    local dir="${1:-$HOME}"
+    [ -d "$dir" ] || { fail "no such directory: $dir"; return 1; }
+    fdupes -r "$dir" | tee "$WINACUX_HOME/duplicates.txt"
+    info "report saved to $WINACUX_HOME/duplicates.txt"
+}
+
+cmd_help() {
+    cat <<'EOF'
+WinacuxOS - wcx
+
+  wcx flow <name>            open a Winacux Flow workspace
+  wcx flows                  list your flows
+  wcx ask <question>         ask the offline Winacux AI
+  wcx doctor                 diagnose this system (Safe Mode)
+  wcx snapshot create        snapshot the system now
+  wcx snapshot restore       restore a snapshot
+  wcx snapshot list          list snapshots
+  wcx remove <package>       uninstall an app and all leftovers
+  wcx vault create|open|close  encrypted personal vault
+  wcx dupes <dir>            find duplicate files
+EOF
+}
+
+case "${1:-help}" in
+    flow)     shift; cmd_flow "$@" ;;
+    flows)    cmd_flows ;;
+    ask)      shift; cmd_ask "$@" ;;
+    doctor)   cmd_doctor ;;
+    snapshot) shift; cmd_snapshot "$@" ;;
+    remove)   shift; cmd_remove "$@" ;;
+    vault)    shift; cmd_vault "$@" ;;
+    dupes)    shift; cmd_dupes "$@" ;;
+    help|-h|--help) cmd_help ;;
+    *) fail "unknown command: $1"; cmd_help; exit 1 ;;
+esac

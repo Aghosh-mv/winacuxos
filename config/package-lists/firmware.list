@@ -1,0 +1,9 @@
+# Non-free firmware for real hardware support.
+firmware-linux-free
+firmware-misc-nonfree
+firmware-realtek
+firmware-iwlwifi
+firmware-amd-graphics
+firmware-intel-sound
+firmware-sof-signed
+bluez-firmware

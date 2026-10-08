@@ -1,0 +1,14 @@
+{
+  "name": "Study",
+  "workspace": 1,
+  "apps": [
+    "org.gnome.Nautilus",
+    "org.gnome.Firefox",
+    "org.gnome.TextEditor",
+    "org.gnome.Calculator"
+  ],
+  "files": [
+    "~/Documents/Notes",
+    "~/Documents"
+  ]
+}

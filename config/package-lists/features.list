@@ -1,0 +1,21 @@
+# WinacuxOS feature backends (roadmap levels 1-7).
+# Game Mode (#6)
+gamemode
+mangohud
+lutris
+# Snapshots + Recovery (#9, #12)
+timeshift
+smartmontools
+# Private Core: encrypted vault (#2)
+gocryptfs
+# Smart File System helpers (#8)
+fdupes
+# Connect: phone pairing (#10)
+kdeconnect
+# Flatpak store + per-app network permissions (#4, #2)
+flatpak
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+xdg-desktop-portal-gnome
+gnome-software-plugin-flatpak
+gnome-software-plugin-snapd

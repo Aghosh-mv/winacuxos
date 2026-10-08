@@ -1,0 +1,16 @@
+[Unit]
+Description=WinacuxOS Safe Mode diagnostics
+Documentation=man:wcx(8)
+# Only runs when booting the "WinacuxOS Recovery (diagnostics)" boot entry.
+ConditionKernelCommandLine=winacux.recovery=1
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/wcx doctor
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WinacuxOS master logo: the "W" mark. Rounded strokes, blue -> violet
+     gradient across the letter, exactly like the desktop mockup. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="winacuxW" x1="48" y1="0" x2="464" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DA3FF"/>
+      <stop offset="0.5" stop-color="#7B7BFF"/>
+      <stop offset="1" stop-color="#A06BFF"/>
+    </linearGradient>
+    <filter id="winacuxShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="blur"/>
+      <feOffset dy="6" result="off"/>
+      <feFlood flood-color="#0A1633" flood-opacity="0.45"/>
+      <feComposite in2="off" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path d="M 64 112 L 160 400 L 256 176 L 352 400 L 448 112"
+        fill="none"
+        stroke="url(#winacuxW)"
+        stroke-width="64"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#winacuxShadow)"/>
+</svg>

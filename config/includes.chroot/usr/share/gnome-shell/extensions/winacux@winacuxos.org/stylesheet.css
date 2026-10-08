@@ -1,0 +1,228 @@
+/* WinacuxOS desktop styling - the look from the mockup.
+ * Glass cards on the right, workspace pills and Flow buttons in the top bar. */
+
+/* ------------------------------------------------------- widget column */
+
+.winacux-column {
+    margin: 8px 10px 0 0;
+    spacing: 12px;
+    padding: 2px;
+}
+
+.winacux-card {
+    background-color: rgba(11, 18, 32, 0.72);
+    border: 1px solid rgba(122, 160, 255, 0.22);
+    border-radius: 18px;
+    padding: 14px 16px;
+    spacing: 8px;
+    width: 300px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.winacux-card-title {
+    font-family: 'Inter';
+    font-weight: 700;
+    font-size: 14px;
+    color: #f5f7fa;
+}
+
+.winacux-logo-bin {
+    height: 56px;
+}
+
+.winacux-logo {
+    width: 56px;
+    height: 56px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.winacux-rows {
+    spacing: 4px;
+}
+
+.winacux-row {
+    spacing: 12px;
+}
+
+.winacux-row-key {
+    font-family: 'Inter';
+    font-size: 12px;
+    color: #9fb0c8;
+    width: 96px;
+}
+
+.winacux-row-value {
+    font-family: 'Inter';
+    font-size: 12px;
+    color: #f5f7fa;
+}
+
+.winacux-mono {
+    font-feature-settings: 'tnum';
+}
+
+.winacux-tagline {
+    font-family: 'Inter';
+    font-style: italic;
+    font-size: 12px;
+    color: #5fd2ff;
+    padding-top: 6px;
+}
+
+/* ---------------------------------------------------------- weather */
+
+.winacux-temp {
+    font-family: 'Inter';
+    font-weight: 700;
+    font-size: 34px;
+    color: #f5f7fa;
+}
+
+/* ----------------------------------------------------------- usage */
+
+.winacux-usage-row {
+    spacing: 10px;
+}
+
+.winacux-usage-key {
+    font-family: 'Inter';
+    font-size: 12px;
+    color: #c8d2e0;
+    width: 56px;
+}
+
+.winacux-usage-track {
+    height: 8px;
+    width: 150px;
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 4px;
+}
+
+.winacux-usage-fill {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #4da3ff;
+}
+
+.winacux-usage-fill-f5b942 { background-color: #f5b942; }
+.winacux-usage-fill-4da3ff { background-color: #4da3ff; }
+.winacux-usage-fill-22c55e { background-color: #22c55e; }
+
+.winacux-usage-value {
+    font-family: 'Inter';
+    font-size: 11px;
+    color: #9fb0c8;
+    width: 34px;
+    text-align: right;
+}
+
+/* -------------------------------------------------------- calendar */
+
+.winacux-cal-week {
+    spacing: 2px;
+}
+
+.winacux-cal-weekday {
+    width: 26px;
+    font-family: 'Inter';
+    font-size: 10px;
+    color: #7f8ea6;
+    text-align: center;
+}
+
+.winacux-cal-day {
+    width: 26px;
+    height: 26px;
+    border-radius: 13px;
+    font-family: 'Inter';
+    font-size: 11px;
+    color: #e6ecf5;
+    text-align: center;
+    padding-top: 5px;
+}
+
+.winacux-cal-today {
+    background-color: #7b5cff;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------- top bar bits */
+
+.winacux-bar {
+    spacing: 10px;
+}
+
+.winacux-flow-box {
+    spacing: 4px;
+}
+
+.winacux-flow-button {
+    font-family: 'Inter';
+    font-size: 11px;
+    font-weight: 600;
+    color: #cfe0ff;
+    background-color: rgba(122, 160, 255, 0.14);
+    border: 1px solid rgba(122, 160, 255, 0.30);
+    border-radius: 12px;
+    padding: 3px 10px;
+}
+
+.winacux-flow-button:hover,
+.winacux-flow-button:focus {
+    background-color: rgba(122, 160, 255, 0.28);
+    color: #ffffff;
+}
+
+.winacux-pills {
+    spacing: 4px;
+}
+
+.winacux-pill {
+    font-family: 'Inter';
+    font-size: 11px;
+    font-weight: 600;
+    color: #9fb0c8;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 3px 9px;
+}
+
+.winacux-pill-active {
+    background-color: #7b5cff;
+    color: #ffffff;
+}
+
+/* ------------------------------------------------------ live wallpaper */
+
+.winacux-wallpaper-layer {
+    background-color: #05091c;
+}
+
+.winacux-wallpaper-art {
+    /* background-image is set from GJS */
+}
+
+.winacux-wallpaper-glow {
+    background-image: radial-gradient(circle at 72% 38%,
+        rgba(140, 180, 255, 0.28) 0%,
+        rgba(160, 107, 255, 0.12) 35%,
+        rgba(0, 0, 0, 0) 70%);
+}
+
+/* ------------------------------------------------------------- dock */
+
+#dashtodock-container {
+    background-color: rgba(11, 18, 32, 0.55);
+    border: 1px solid rgba(122, 160, 255, 0.18);
+    border-radius: 0 18px 18px 0;
+    margin: 6px 0 6px 6px;
+    padding: 6px 4px;
+}
+
+.dash-label {
+    font-family: 'Inter';
+    font-size: 11px;
+    color: #e6ecf5;
+}

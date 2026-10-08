@@ -1,0 +1,70 @@
+#!/bin/sh
+# WinacuxOS chroot hook (runs as root inside the image being built).
+#
+#  - validates every dconf key we ship actually exists in the installed schemas
+#  - builds the WinacuxOS plymouth (boot splash) theme
+#  - generates the locale and compiles the dconf system database
+set -e
+
+LOG=/var/log/winacuxos-build.log
+: > "$LOG"
+
+echo "[winacuxos] validating shipped dconf keys" | tee -a "$LOG"
+
+DB=/etc/dconf/db/local.d/00-winacuxos
+if [ -f "$DB" ]; then
+    SCHEMAS=/usr/share/glib-2.0/schemas
+    # For each "key='value'" line, confirm a schema defines that key name.
+    sed -n "s/^[[:space:]]*\([a-zA-Z0-9_-]*\)='.*/\1/p" "$DB" | sort -u | while read -r key; do
+        if ! grep -rqs "<key name=\"$key\">" "$SCHEMAS"; then
+            echo "[winacuxos] WARNING: no installed schema defines key '$key'" | tee -a "$LOG"
+        fi
+    done
+    echo "[winacuxos] dconf key check complete" | tee -a "$LOG"
+fi
+
+# ---------------------------------------------------------------- plymouth
+if [ -d /usr/share/plymouth/themes/spinner ]; then
+    echo "[winacuxos] installing plymouth boot theme" | tee -a "$LOG"
+    THEME=/usr/share/plymouth/themes/winacuxos
+    rm -rf "$THEME"
+    cp -a /usr/share/plymouth/themes/spinner "$THEME"
+    mv "$THEME/spinner.plymouth" "$THEME/winacuxos.plymouth"
+    sed -i "s|/themes/spinner|/themes/winacuxos|g" "$THEME/winacuxos.plymouth"
+    sed -i "s|^Name=.*|Name=WinacuxOS|" "$THEME/winacuxos.plymouth"
+    sed -i "s|^Description=.*|Description=WinacuxOS boot splash|" "$THEME/winacuxos.plymouth"
+    if [ -f /usr/share/winacuxos/logo-256.png ]; then
+        cp /usr/share/winacuxos/logo-256.png "$THEME/spinner-logo.png"
+    fi
+    update-alternatives --install /usr/share/plymouth/themes/default/theme \
+        default-theme /usr/share/plymouth/themes/winacuxos/winacuxos.plymouth 100
+    update-alternatives --set default-theme /usr/share/plymouth/themes/winacuxos/winacuxos.plymouth
+    update-initramfs -u -k all
+    echo "[winacuxos] plymouth theme installed" | tee -a "$LOG"
+fi
+
+# ---------------------------------------------------------------- locale
+echo "[winacuxos] generating en_US.UTF-8" | tee -a "$LOG"
+if ! grep -q '^en_US.UTF-8 UTF-8' /etc/locale.gen; then
+    echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen
+fi
+locale-gen >/dev/null
+
+# ---------------------------------------------------------------- Winacux shell extension
+EXT_DIR=/usr/share/gnome-shell/extensions/winacux@winacuxos.org
+if [ -d "$EXT_DIR" ]; then
+    echo "[winacuxos] compiling WinacuxOS extension schemas" | tee -a "$LOG"
+    glib-compile-schemas "$EXT_DIR/schemas"
+    chmod +x /usr/local/bin/wcx
+    # Fail loudly if the shell could never load the extension.
+    if [ ! -f "$EXT_DIR/extension.js" ] || [ ! -f "$EXT_DIR/stylesheet.css" ]; then
+        echo "[winacuxos] FATAL: WinacuxOS extension is incomplete" | tee -a "$LOG"
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------- dconf
+echo "[winacuxos] compiling dconf system database" | tee -a "$LOG"
+dconf update
+
+echo "[winacuxos] chroot hook finished" | tee -a "$LOG"
