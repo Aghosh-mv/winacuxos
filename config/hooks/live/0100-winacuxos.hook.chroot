@@ -16,7 +16,7 @@ if [ -f "$DB" ]; then
     SCHEMAS=/usr/share/glib-2.0/schemas
     # For each "key='value'" line, confirm a schema defines that key name.
     sed -n "s/^[[:space:]]*\([a-zA-Z0-9_-]*\)='.*/\1/p" "$DB" | sort -u | while read -r key; do
-        if ! grep -rqs "<key name=\"$key\">" "$SCHEMAS"; then
+        if ! grep -rqs "<key name=\"$key\"" "$SCHEMAS"; then
             echo "[winacuxos] WARNING: no installed schema defines key '$key'" | tee -a "$LOG"
         fi
     done
@@ -36,10 +36,17 @@ if [ -d /usr/share/plymouth/themes/spinner ]; then
     if [ -f /usr/share/winacuxos/logo-256.png ]; then
         cp /usr/share/winacuxos/logo-256.png "$THEME/spinner-logo.png"
     fi
-    update-alternatives --install /usr/share/plymouth/themes/default/theme \
-        default-theme /usr/share/plymouth/themes/winacuxos/winacuxos.plymouth 100
-    update-alternatives --set default-theme /usr/share/plymouth/themes/winacuxos/winacuxos.plymouth
-    update-initramfs -u -k all
+    mkdir -p /usr/share/plymouth/themes/default
+    if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+        # -R also refreshes the initramfs.
+        plymouth-set-default-theme -R winacuxos || \
+            echo "[winacuxos] WARNING: plymouth-set-default-theme failed" | tee -a "$LOG"
+    else
+        update-alternatives --install /usr/share/plymouth/themes/default/theme \
+            default-theme "$THEME/winacuxos.plymouth" 100
+        update-alternatives --set default-theme "$THEME/winacuxos.plymouth"
+        update-initramfs -u -k all
+    fi
     echo "[winacuxos] plymouth theme installed" | tee -a "$LOG"
 fi
 

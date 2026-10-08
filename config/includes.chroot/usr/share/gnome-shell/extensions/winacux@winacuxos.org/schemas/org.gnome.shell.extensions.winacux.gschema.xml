@@ -50,4 +50,19 @@
     <summary>Cursor trail fade</summary>
     <description>How quickly trail nodes fade out.</description>
   </key>
+<key name="win-space" type="s">
+    <default>'&lt;Super&gt;space'</default>
+    <summary>Winacux Command shortcut</summary>
+    <description>Opens the Winacux Command palette.</description>
+  </key>
+  <key name="composer-toggle" type="s">
+    <default>'&lt;Alt&gt;Tab'</default>
+    <summary>Window Composer shortcut</summary>
+    <description>Opens the Winacux Window Composer.</description>
+  </key>
+<key name="theme-css" type="s">
+    <default>''</default>
+    <summary>Accent/theme override stylesheet</summary>
+    <description>Path written by Theme Studio. Reloaded live when the file changes.</description>
+  </key>
 </gsettings>

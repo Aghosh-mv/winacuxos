@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Winacux Theme Studio
+GenericName=Appearance
+Comment=One accent colour for the whole desktop
+Exec=winacux-theme
+Icon=preferences-desktop-appearance
+Terminal=false
+Categories=Settings;GTK;

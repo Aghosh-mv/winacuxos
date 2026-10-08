@@ -275,3 +275,120 @@
     border-radius: 999px;
     box-shadow: 0 0 12px rgba(122, 160, 255, 0.55);
 }
+
+/* ------------------------------------------------------ Winacux Command */
+
+.winacux-command {
+    width: 640px;
+    margin-top: 64px;
+    spacing: 6px;
+    background-color: rgba(11, 18, 32, 0.90);
+    border: 1px solid rgba(122, 160, 255, 0.28);
+    border-radius: 18px;
+    padding: 10px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.winacux-command-entry {
+    font-family: 'Inter';
+    font-size: 15px;
+    color: #f5f7fa;
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(122, 160, 255, 0.22);
+    border-radius: 14px;
+    padding: 10px 14px;
+}
+
+.winacux-command-results {
+    spacing: 2px;
+}
+
+.winacux-command-row {
+    padding: 8px 10px;
+    border-radius: 12px;
+    background-color: transparent;
+}
+
+.winacux-command-row-active {
+    background-color: rgba(123, 92, 255, 0.28);
+}
+
+.winacux-command-icon {
+    icon-size: 22px;
+    padding-right: 10px;
+}
+
+.winacux-command-title {
+    font-family: 'Inter';
+    font-size: 13px;
+    color: #f5f7fa;
+}
+
+.winacux-command-detail {
+    font-family: 'Inter';
+    font-size: 10px;
+    color: #9fb0c8;
+}
+
+.winacux-command-status {
+    font-family: 'Inter';
+    font-size: 11px;
+    color: #9fb0c8;
+    padding: 4px 8px 2px 8px;
+}
+
+/* ------------------------------------------------------- Window Composer */
+
+.winacux-composer-overlay {
+    background-color: rgba(5, 9, 28, 0.55);
+}
+
+.winacux-composer {
+    spacing: 12px;
+    padding: 18px;
+    border-radius: 22px;
+    background-color: rgba(11, 18, 32, 0.85);
+    border: 1px solid rgba(122, 160, 255, 0.25);
+}
+
+.winacux-composer-cards {
+    spacing: 12px;
+}
+
+.winacux-composer-card {
+    width: 300px;
+    spacing: 8px;
+    padding: 10px;
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+}
+
+.winacux-composer-card-active {
+    background-color: rgba(123, 92, 255, 0.22);
+    border-color: rgba(123, 92, 255, 0.75);
+}
+
+.winacux-composer-thumb {
+    border-radius: 10px;
+}
+
+.winacux-composer-icon {
+    icon-size: 64px;
+}
+
+.winacux-composer-caption {
+    spacing: 2px;
+}
+
+.winacux-composer-title {
+    font-family: 'Inter';
+    font-size: 12px;
+    color: #f5f7fa;
+}
+
+.winacux-composer-app {
+    font-family: 'Inter';
+    font-size: 10px;
+    color: #9fb0c8;
+}

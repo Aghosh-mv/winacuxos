@@ -22,11 +22,12 @@ mkdir -p "$OUT"
 echo "==> Building the builder image"
 docker build -t "$IMAGE" "$ROOT/scripts"
 
-echo "==> Building live image${CLEAN:+ (clean)}"
+echo "==> Building live image${CLEAN:+ (clean)}${WINACUX_AI:+ (AI stage: ${WINACUX_AI})}"
 echo "    first build downloads ~2GB and takes 30-60 minutes"
 
 docker run --rm --privileged \
     -e CLEAN="$CLEAN" \
+    -e WINACUX_AI="${WINACUX_AI:-1}" \
     -v "$ROOT":/src:ro \
     -v "$VOLUME":/build \
     -v "$OUT":/out \

@@ -13,6 +13,21 @@
 #   wcx help
 set -uo pipefail
 
+# Privileged actions (snapshots, updates, package removal) must work when the
+# command comes from the desktop, not a terminal, so they elevate through
+# pkexec and get a normal graphical password prompt.
+WINACUX_PRIVILEGED="snapshot remove update vault dupes restore-desk"
+is_privileged() {
+    for candidate in $WINACUX_PRIVILEGED; do
+        [ "$1" = "$candidate" ] && return 0
+    done
+    return 1
+}
+if [ "$(id -u)" -ne 0 ] && [ "${1:-}" != "--elevated" ] && is_privileged "${1:-}"; then
+    exec pkexec "$0" --elevated "$@"
+fi
+[ "${1:-}" = "--elevated" ] && shift
+
 WINACUX_HOME="${WINACUX_HOME:-$HOME/.config/winacux}"
 FLOW_DIR="$WINACUX_HOME/flows"
 ACTIVE_FILE="$WINACUX_HOME/active-flow"
@@ -212,6 +227,90 @@ cmd_cursors() {
     esac
 }
 
+cmd_find() {
+    local terms="$*"
+    if [ -z "$terms" ]; then
+        fail "usage: wcx find <words>"
+        return 1
+    fi
+    # Local search only: fd (fast) with a locate fallback for machines where the
+    # index has not been built yet.
+    local results
+    if command -v fdfind >/dev/null 2>&1; then
+        results=$(fdfind --type f --hidden --follow --exclude .git \
+                      --ignore-case "$terms" "$HOME" 2>/dev/null | head -40)
+    elif command -v fd >/dev/null 2>&1; then
+        results=$(fd --type f --hidden --follow --exclude .git --ignore-case \
+                     "$terms" "$HOME" 2>/dev/null | head -40)
+    else
+        results=$(find "$HOME" -type f -iname "*${terms}*" 2>/dev/null | head -40)
+    fi
+
+    if [ -z "$results" ]; then
+        warn "nothing matched \"$terms\""
+        return 1
+    fi
+
+    info "found $(printf '%s\n' "$results" | wc -l | tr -d ' ') files"
+    printf '%s\n' "$results" | while read -r file; do
+        printf '    %s\n' "$file"
+    done
+
+    # Hand the results to Files so the user can act on them.
+    local dir
+    dir=$(dirname "$(printf '%s\n' "$results" | head -1)")
+    if command -v nautilus >/dev/null 2>&1; then
+        nautilus --select "$(printf '%s\n' "$results" | head -1)" >/dev/null 2>&1 &
+    elif [ -n "$dir" ]; then
+        xdg-open "$dir" >/dev/null 2>&1 &
+    fi
+}
+
+cmd_theme() {
+    exec /usr/local/bin/winacux-theme
+}
+
+cmd_update() {
+    local action="${1:-check}"
+    case "$action" in
+        check)
+            info "refreshing package lists"
+            apt-get update -qq
+            local pending
+            pending=$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+            if [ "$pending" -eq 0 ]; then
+                printf '\033[32mOK\033[0m WinacuxOS is up to date\n'
+            else
+                printf '\033[33m!\033[0m %s package(s) can be updated\n' "$pending"
+                apt list --upgradable 2>/dev/null | tail -n +8 | head -20
+            fi
+            ;;
+        apply)
+            # Snapshot first: Winacux Snapshot guards every update.
+            if [ -f /etc/timeshift/timeshift.json ]; then
+                info "creating a pre-update snapshot"
+                timeshift --create --comments "before WinacuxOS update" >/dev/null 2>&1 || \
+                    warn "snapshot failed - continuing anyway"
+            fi
+            info "applying updates"
+            DEBIAN_FRONTEND=noninteractive apt-get -y \
+                -o Dpkg::Options::=--force-confdef \
+                -o Dpkg::Options::=--force-confold \
+                dist-upgrade
+            info "reboot to finish (reboot is safe: a rollback snapshot exists)"
+            ;;
+        rollback)
+            shift 2>/dev/null || true
+            info "restoring the newest snapshot"
+            timeshift --restore
+            ;;
+        *)
+            fail "usage: wcx update check|apply|rollback"
+            return 1
+            ;;
+    esac
+}
+
 cmd_help() {
     cat <<'EOF'
 WinacuxOS - wcx
@@ -229,6 +328,9 @@ WinacuxOS - wcx
   wcx cursors list           list cursor themes
   wcx cursors import <file>  import a .zip/.ani/.cur cursor pack
   wcx mouse                  open the Mouse settings window
+  wcx theme                  open Theme Studio (accent, Light/Dark/Neon)
+  wcx find <words>           local file search, opens Files on the best match
+  wcx update check|apply|rollback   snapshot-first updates
 EOF
 }
 
@@ -242,6 +344,9 @@ case "${1:-help}" in
     vault)    shift; cmd_vault "$@" ;;
     dupes)    shift; cmd_dupes "$@" ;;
     cursors)  shift; cmd_cursors "$@" ;;
+    find)     shift; cmd_find "$@" ;;
+    theme)    cmd_theme ;;
+    update)   shift; cmd_update "$@" ;;
     mouse)    exec /usr/local/bin/winacux-mouse ;;
     help|-h|--help) cmd_help ;;
     *) fail "unknown command: $1"; cmd_help; exit 1 ;;
