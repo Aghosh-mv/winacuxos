@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Winacux Rescue
+GenericName=Recovery
+Comment=Restore snapshots, repair disks, reinstall firmware
+Exec=winacux-rescue
+Icon=drive-harddisk
+Terminal=false
+Categories=System;Recovery;

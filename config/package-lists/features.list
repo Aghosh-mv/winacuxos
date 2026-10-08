@@ -12,6 +12,11 @@ gocryptfs
 fdupes
 # Connect: phone pairing (#10)
 kdeconnect
+# AI Everywhere: clipboard + screenshot understanding
+tesseract-ocr
+tesseract-ocr-eng
+wl-clipboard
+
 # Cursor Studio: convert Windows/Chrome cursor packs into Linux themes
 x11-apps
 imagemagick

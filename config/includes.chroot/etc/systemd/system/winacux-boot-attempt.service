@@ -1,0 +1,16 @@
+[Unit]
+Description=WinacuxOS boot attempt marker
+Documentation=man:wcx(8)
+Before=graphical.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Written at every boot. winacux-boot-success.service removes it once the
+# desktop has proven stable; if it is still here next boot, the last session
+# did not survive, and the Update Center offers a rollback.
+ExecStart=/bin/sh -c 'mkdir -p /var/lib/winacux && date -Is > /var/lib/winacux/boot-in-progress'
+ExecStop=/bin/true
+
+[Install]
+WantedBy=graphical.target

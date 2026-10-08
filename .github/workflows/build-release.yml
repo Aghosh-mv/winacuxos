@@ -1,0 +1,57 @@
+name: Build release images
+
+# The amd64 image is built here rather than on an Apple Silicon Mac: an amd64
+# system assembled inside an arm64 container has to be emulated, which is slow
+# and crashes things like Python's compile step. Ubuntu runners are native x86,
+# so this is both faster and more correct.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ai:
+        description: Build the llama.cpp + model stage
+        type: boolean
+        default: false
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            docker.io live-build xorriso debootstrap rsync dosfstools \
+            squashfs-tools mtools git imagemagick librsvg2-bin
+
+      - name: Validate (packages, scripts, schemas, JSON)
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/check-packages.sh
+          ./scripts/validate.sh
+
+      - name: Build the ISO
+        env:
+          WCX_ARCH: amd64
+          WINACUX_AI: ${{ inputs.ai && '1' || '0' }}
+        run: ./scripts/build.sh --clean --export
+
+      - name: Checksums
+        run: |
+          cd build-out
+          sha256sum *.iso | tee SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build-out
+          gh release create "$GITHUB_REF_NAME" *.iso SHA256SUMS \
+            --title "WinacuxOS $GITHUB_REF_NAME" \
+            --notes "Automated build. See BRANDING.md and docs/ROADMAP.md."

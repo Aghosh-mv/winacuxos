@@ -1,0 +1,45 @@
+#!/bin/sh
+# WinacuxOS boot performance.
+#
+# A desktop that reaches the screen in seconds is a feature, so the image is
+# trimmed on purpose: services the live session never needs are disabled and
+# the initramfs is rebuilt with zstd. Nothing here removes functionality the
+# user can reach - it only removes work nobody waits for.
+set -e
+
+LOG=/var/log/winacuxos-build.log
+echo "[winacuxos] trimming boot time" | tee -a "$LOG"
+
+# Services that only make sense on a persistent, installed machine.
+for unit in \
+    snapd.service snapd.socket snapd.seeded.service \
+    cups.service cups-browsed.service \
+    fwupd.service \
+    geoclue.service \
+    e2scrub_all.timer \
+    man-db.timer \
+    apt-daily.timer apt-daily-upgrade.timer \
+    packagekit-offline-update.timer \
+    systemd-networkd-wait-online.service \
+    bluetooth.service \
+    avahi-daemon.service avahi-daemon.socket
+do
+    if systemctl list-unit-files 2>/dev/null | grep -q "^${unit%%.*}"; then
+        systemctl --quiet disable "$unit" >/dev/null 2>&1 || true
+    fi
+done
+
+# packagekit stays: GNOME Software (the Winacux Store) needs it for updates.
+
+# A smaller initramfs, decompressed faster.
+if [ -f /etc/initramfs-tools/initramfs.conf ]; then
+    sed -i 's/^COMPRESS=.*/COMPRESS=zstd/' /etc/initramfs-tools/initramfs.conf
+fi
+sed -i 's/^MODULES=.*/MODULES=dep/' /etc/initramfs-tools/initramfs.conf
+update-initramfs -u -k all >/dev/null 2>&1 || true
+
+# Fonts and schemas are already compiled; drop the caches that only slow the
+# first boot down.
+rm -rf /var/cache/fontconfig/* /var/cache/man/* 2>/dev/null || true
+
+echo "[winacuxos] boot trim complete" | tee -a "$LOG"

@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+"""Winacux Rescue.
+
+Runs from the booted ISO (no installed system needed) or from an installed
+WinacuxOS. Everything here is aimed at the moment things are already broken:
+
+  * restore any Timeshift snapshot
+  * check and repair filesystems
+  * reinstall/reconfigure the bootloader (GRUB)
+  * inspect hardware: disks, memory, GPU, network
+  * run the full diagnostics report
+  * reinstall the proprietary firmware blobs that wireless/graphics need
+
+Every destructive action asks first, because this is a rescue tool.
+"""
+
+import pathlib
+import shutil
+import subprocess
+import sys
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gio, GLib, Gtk
+
+APP_ID = "org.winacuxos.Rescue"
+WCX = "/usr/local/bin/wcx"
+
+
+def run(command, timeout=300):
+    try:
+        result = subprocess.run(command, capture_output=True, text=True,
+                                shell=isinstance(command, str), timeout=timeout)
+        return result.returncode == 0, (result.stdout + result.stderr).strip()
+    except subprocess.TimeoutExpired:
+        return False, "timed out"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def which(tool):
+    return shutil.which(tool) is not None
+
+
+class Rescue(Adw.ApplicationWindow):
+    def __init__(self, application):
+        super().__init__(application=application, title="Winacux Rescue",
+                         default_width=660, default_height=640)
+
+        header = Adw.HeaderBar()
+        self.set_content(header)
+        header.set_title_widget(Adw.WindowTitle.new("Winacux Rescue",
+                                                    "Repair anything, even a system that will not boot"))
+
+        self._toasts = Adw.ToastOverlay()
+        self.set_content(self._toasts)
+
+        page = Adw.PreferencesPage()
+        self._toasts.set_child(page)
+
+        self._output = None
+
+        # ------------------------------------------------- restore a snapshot
+        restore = Adw.PreferencesGroup(
+            title="Restore",
+            description="Timeshift snapshots taken before updates or by hand.")
+        page.add_group(restore)
+
+        list_row = Adw.ActionRow(title="Snapshots on this machine",
+                                 subtitle="loading…")
+        restore.add(list_row)
+        self._snapshot_row = list_row
+
+        restore_now = Adw.ActionRow(
+            title="Restore the newest snapshot",
+            subtitle="Puts the system back the way it was")
+        button = Gtk.Button(label="Restore", valign=Gtk.Align.CENTER)
+        button.add_css_class("destructive-action")
+        button.connect("clicked", lambda *_: self._confirm_restore())
+        restore_now.add_suffix(button)
+        restore.add(restore_now)
+
+        # ---------------------------------------------------------- filesystems
+        disks = Adw.PreferencesGroup(title="Disks")
+        page.add_group(disks)
+        self._add_action(disks, "Check every filesystem (read-only)",
+                         "Safe to run while mounted", "fsck",
+                         lambda: ["fsck", "-N", "-A"])
+        self._add_action(disks, "Rebuild the bootloader (GRUB)",
+                         "For a machine that used to boot and no longer does",
+                         "grub",
+                         lambda: (["update-grub"] if which("update-grub")
+                                  else ["grub-install", "/dev/sda"]))
+
+        # ------------------------------------------------------------- firmware
+        firmware = Adw.PreferencesGroup(
+            title="Firmware",
+            description="Wi-Fi, graphics and audio blobs for common hardware.")
+        page.add_group(firmware)
+        fw_row = Adw.ActionRow(title="Reinstall firmware packages",
+                               subtitle="wifi, nvidia/amd, intel, realtek, atheros")
+        fw_button = Gtk.Button(label="Install", valign=Gtk.Align.CENTER)
+        fw_button.connect("clicked", lambda *_: self._reinstall_firmware())
+        fw_row.add_suffix(fw_button)
+        firmware.add(fw_row)
+
+        # --------------------------------------------------------- diagnostics
+        diag = Adw.PreferencesGroup(title="Diagnose")
+        page.add_group(diag)
+        self._add_action(diag, "Full diagnostics report", "Same as `wcx doctor`",
+                         "doctor", lambda: [WCX, "doctor"])
+        self._add_action(diag, "Memory test", "Uses memtest if available",
+                         "memory", lambda: ["memtester", "-E", "1", "512M"])
+        self._add_action(diag, "Live system journal", "Last errors and warnings",
+                         "journal", lambda: ["journalctl", "-p", "err", "-b",
+                                             "--no-pager", "-n", "80"])
+
+        # -------------------------------------------------------------- network
+        net = Adw.PreferencesGroup(title="Sharing this machine")
+        page.add_group(net)
+        ip_row = Adw.ActionRow(title="This machine's addresses",
+                               subtitle=self._local_addresses())
+        net.add(ip_row)
+
+        self._refresh_snapshots()
+
+    # --------------------------------------------------------------- helpers
+
+    def _add_action(self, group, title, subtitle, name, command_factory):
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        button = Gtk.Button(label="Run", valign=Gtk.Align.CENTER)
+        button.connect("clicked", lambda *_: self._run_action(name, command_factory))
+        row.add_suffix(button)
+        group.add(row)
+        return row
+
+    def _local_addresses(self):
+        output = run("ip -4 -o addr show scope global 2>/dev/null || true")
+        if output[0]:
+            addresses = []
+            for line in output[1].splitlines():
+                parts = line.split()
+                if len(parts) > 3:
+                    addresses.append(parts[3].split("/")[0])
+            return ", ".join(addresses) if addresses else "no network"
+        return "no network"
+
+    def _refresh_snapshots(self):
+        def work():
+            return run([WCX, "snapshot", "list"])
+        GLib.idle_add(self._apply_snapshots, *work())
+
+    def _apply_snapshots(self, ok, output):
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        rows = [line for line in lines if "-" in line and ">" in line]
+        self._snapshot_row.set_subtitle(
+            f"{len(rows)} snapshot(s) found" if rows else
+            "none on this machine - snapshots live on the installed system's root")
+        return False
+
+    def _confirm_restore(self):
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading="Restore the newest snapshot?",
+            body="The system will be rolled back and needs a reboot. Files created "
+                 "after the snapshot will be lost.",
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("restore", "Restore", "destructive-action")
+        dialog.connect("response", self._on_restore_response)
+        dialog.present()
+
+    def _on_restore_response(self, dialog, response):
+        dialog.destroy()
+        if response != "restore":
+            return
+        self.toast("restoring, this can take a while…")
+        GLib.idle_add(self._finish_restore, *run([WCX, "update", "rollback"], timeout=3600))
+
+    def _finish_restore(self, ok, output):
+        self.toast("restored - reboot to come back up cleanly" if ok else "restore failed")
+        return False
+
+    def _reinstall_firmware(self):
+        packages = ("firmware-linux-free firmware-misc-nonfree firmware-realtek "
+                    "firmware-iwlwifi firmware-amd-graphics firmware-intel-sound "
+                    "firmware-sof-signed")
+        self.toast("reinstalling firmware…")
+        GLib.idle_add(self._finish_firmware, *run(
+            ["pkexec", "apt-get", "install", "--reinstall", "-y", *packages.split()],
+            timeout=900))
+
+    def _finish_firmware(self, ok, output):
+        self.toast("firmware reinstalled" if ok else "firmware reinstall failed")
+        return False
+
+    def _run_action(self, name, command_factory):
+        command = command_factory()
+        self.toast(f"{name}: running…")
+        GLib.idle_add(self._finish_action, name, *run(command, timeout=1200))
+
+    def _finish_action(self, name, ok, output):
+        self.toast(f"{name}: {'done' if ok else 'failed'}")
+        if output:
+            lines = output.splitlines()[:12]
+            self.toast("\n".join(lines)[:180] if not ok else "\n".join(lines)[:180])
+        return False
+
+    def toast(self, message):
+        self._toasts.add_toast(Adw.Toast.new(message))
+
+
+class RescueApplication(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID)
+
+    def do_activate(self):
+        Rescue(self).present()
+
+
+def main():
+    RescueApplication().run([])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

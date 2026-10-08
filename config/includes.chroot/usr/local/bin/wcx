@@ -16,7 +16,7 @@ set -uo pipefail
 # Privileged actions (snapshots, updates, package removal) must work when the
 # command comes from the desktop, not a terminal, so they elevate through
 # pkexec and get a normal graphical password prompt.
-WINACUX_PRIVILEGED="snapshot remove update vault dupes restore-desk"
+WINACUX_PRIVILEGED="snapshot remove update vault dupes rescue"
 is_privileged() {
     for candidate in $WINACUX_PRIVILEGED; do
         [ "$1" = "$candidate" ] && return 0
@@ -266,6 +266,81 @@ cmd_find() {
     fi
 }
 
+# ------------------------------------------------------- AI everywhere
+
+cmd_explain() {
+    local text="$*"
+    if [ -z "$text" ]; then
+        # No argument: explain whatever is on the clipboard.
+        if command -v wl-paste >/dev/null 2>&1; then
+            text=$(wl-paste --no-newline 2>/dev/null)
+        fi
+    fi
+    if [ -z "$text" ]; then
+        fail "nothing to explain - pass some text or copy it first"
+        return 1
+    fi
+    info "asking the local model"
+    cmd_ask "Explain this in two sentences, and say what I should do about it:\n\n$text"
+}
+
+cmd_shot() {
+    local out="${TMPDIR:-/tmp}/winacux-screen.png"
+    info "capturing the screen"
+
+    # GNOME exposes its screenshot API on the session bus.
+    if ! gdbus call --session --dest org.gnome.Shell.Screenshot \
+            --object-path /org/gnome/Shell/Screenshot \
+            --method org.gnome.Shell.Screenshot.Screenshot false false "$out" >/dev/null 2>&1; then
+        fail "screen capture failed (is a GNOME session running?)"
+        return 1
+    fi
+
+    if ! command -v tesseract >/dev/null 2>&1; then
+        info "saved to $out (install tesseract-ocr to read text from it)"
+        return 0
+    fi
+
+    local text
+    text=$(tesseract "$out" stdout 2>/dev/null)
+    if [ -z "${text//[[:space:]]/}" ]; then
+        info "no text found on screen; image saved to $out"
+        return 0
+    fi
+
+    info "read from screen:"
+    printf '%s\n' "$text" | head -12 | sed 's/^/    /'
+    printf '\n'
+    cmd_ask "This is the text from a screenshot on my screen. What does it mean, and what should I do?\n\n$text"
+}
+
+cmd_desk() {
+    local action="${1:-save}"
+    local file="$WINACUX_HOME/layouts.json"
+    case "$action" in
+        save)
+            mkdir -p "$WINACUX_HOME"
+            if command -v wmctrl >/dev/null 2>&1; then
+                wmctrl -l > "$file.windows" 2>/dev/null || true
+            fi
+            gdbus call --session --dest org.gnome.Shell \
+                --object-path /org/gnome/Shell \
+                --method org.gnome.Shell.Eval \
+                "global.get_window_actors().map(a => a.meta_window.get_application()?.get_id()).filter(Boolean)" \
+                > "$file" 2>/dev/null || \
+                printf '%s\n' '{"note":"open Winacux Command and type \"start study\" to rebuild the desk"}' > "$file"
+            info "desk saved to $file"
+            ;;
+        show)
+            [ -f "$file" ] && cat "$file" || warn "no saved layout yet - try: wcx desk save"
+            ;;
+        *)
+            fail "usage: wcx desk save|show"
+            return 1
+            ;;
+    esac
+}
+
 cmd_theme() {
     exec /usr/local/bin/winacux-theme
 }
@@ -330,6 +405,10 @@ WinacuxOS - wcx
   wcx mouse                  open the Mouse settings window
   wcx theme                  open Theme Studio (accent, Light/Dark/Neon)
   wcx find <words>           local file search, opens Files on the best match
+  wcx explain [text]         ask the AI to explain text (or the clipboard)
+  wcx shot                   screenshot -> OCR -> ask the AI what is wrong
+  wcx rescue                 open Winacux Rescue
+  wcx desk save|show         remember this workspace layout
   wcx update check|apply|rollback   snapshot-first updates
 EOF
 }
@@ -345,6 +424,10 @@ case "${1:-help}" in
     dupes)    shift; cmd_dupes "$@" ;;
     cursors)  shift; cmd_cursors "$@" ;;
     find)     shift; cmd_find "$@" ;;
+    explain)  shift; cmd_explain "$@" ;;
+    shot)     cmd_shot ;;
+    rescue)   exec /usr/local/bin/winacux-rescue ;;
+    desk)     shift; cmd_desk "$@" ;;
     theme)    cmd_theme ;;
     update)   shift; cmd_update "$@" ;;
     mouse)    exec /usr/local/bin/winacux-mouse ;;

@@ -1,0 +1,14 @@
+[Unit]
+Description=WinacuxOS marks this boot as successful
+Documentation=man:wcx(8)
+After=graphical.target
+ConditionPathExists=/var/lib/winacux/boot-in-progress
+
+[Service]
+Type=oneshot
+# Two minutes of a working desktop is enough to call the boot good.
+ExecStart=/bin/sleep 120
+ExecStart=/bin/sh -c 'mkdir -p /var/lib/winacux && date -Is > /var/lib/winacux/boot-ok && rm -f /var/lib/winacux/boot-in-progress'
+
+[Install]
+WantedBy=graphical.target

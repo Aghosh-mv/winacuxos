@@ -177,6 +177,17 @@ function systemActions() {
             run: () => GLib.spawn_command_line_async(`${WCX} update check`)},
         {title: 'Diagnose this system', detail: 'Winacux Safe Mode', keywords: 'doctor diagnose fix problems broken error',
             run: () => GLib.spawn_command_line_async(`${WCX} doctor`)},
+
+        // AI Everywhere: the clipboard and the screen are valid questions.
+        {title: 'Explain what I copied', detail: 'Winacux AI',
+            keywords: 'explain copied clipboard selection text what does this mean',
+            run: () => this._runShell(`${WCX} explain`)},
+        {title: 'What is wrong with this screen?', detail: 'Winacux AI · screenshot + OCR',
+            keywords: 'screenshot screen error dialog problem broken what wrong reading',
+            run: () => this._runShell(`${WCX} shot`)},
+        {title: 'Ask the AI anything', detail: 'Winacux AI',
+            keywords: 'ask ai chat question assistant',
+            run: null, prompt: true},
         {title: 'Theme Studio', detail: 'Winacux', keywords: 'theme accent colour color style appearance studio',
             run: () => GLib.spawn_command_line_async(`${WCX} theme`)},
         {title: 'Mouse settings', detail: 'Winacux', keywords: 'mouse cursor pointer trail click',
@@ -336,6 +347,21 @@ class WinacuxCommand extends St.BoxLayout {
         this._renderSelection();
     }
 
+    _runShell(command) {
+        // These print a short report; show it as a notification rather than
+        // opening a terminal the user did not ask for.
+        const proc = Gio.Subprocess.new(['bash', '-lc', command], null);
+        proc.communicate_utf8_async(null, null, (source, result) => {
+            try {
+                const [ok, stdout] = source.communicate_utf8_finish(result);
+                const text = (stdout || '').trim().split('\n').slice(0, 14).join('\n');
+                Main.notify('Winacux', text || 'done');
+            } catch (e) {
+                Main.notify('Winacux', 'command failed');
+            }
+        });
+    }
+
     _activate(index) {
         const item = this._items[index];
         if (!item)
@@ -376,6 +402,16 @@ class WinacuxCommand extends St.BoxLayout {
 
         // Nothing matched well: ask the local model instead of shrugging.
         if (!this._items.length || this._items[0].score < 120) {
+            this._items.unshift({
+                title: `Ask Winacux AI: “${query}”`,
+                detail: 'Offline AI',
+                run: () => {
+                    const ask = () => askAI(query).then(answer => {
+                        Main.notify('Winacux AI', answer || 'No answer from the local model.');
+                    });
+                    ask();
+                },
+            });
             this._items.unshift({
                 title: `Ask Winacux AI: “${query}”`,
                 detail: 'Offline AI',

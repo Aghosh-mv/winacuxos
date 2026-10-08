@@ -93,6 +93,16 @@ EOF
     fi
 fi
 
+# ---------------------------------------------------------------- services
+echo "[winacuxos] enabling WinacuxOS services" | tee -a "$LOG"
+for unit in winacux-ai.service winacux-recovery.service \
+            winacux-boot-attempt.service winacux-boot-success.service; do
+    if [ -f "/etc/systemd/system/$unit" ]; then
+        systemctl enable "$unit" >/dev/null 2>&1 || \
+            echo "[winacuxos] note: could not enable $unit" | tee -a "$LOG"
+    fi
+done
+
 # ---------------------------------------------------------------- dconf
 echo "[winacuxos] compiling dconf system database" | tee -a "$LOG"
 dconf update

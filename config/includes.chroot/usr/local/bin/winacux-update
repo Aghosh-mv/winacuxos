@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Winacux Update Center.
+
+Updates in WinacuxOS are snapshot-first: before anything is applied, a Timeshift
+snapshot is taken, so a bad kernel or a broken desktop is one click away from
+being undone. The Center also watches for failed boots and offers the rollback
+immediately, which is what makes the promise real.
+"""
+
+import pathlib
+import subprocess
+import sys
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gio, GLib, Gtk
+
+APP_ID = "org.winacuxos.UpdateCenter"
+WCX = "/usr/local/bin/wcx"
+STATE_DIR = pathlib.Path("/var/lib/winacux")
+
+
+def run(command, timeout=180):
+    """Run a wcx command off the UI thread and return (ok, output)."""
+    try:
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=timeout)
+        return result.returncode == 0, (result.stdout + result.stderr).strip()
+    except subprocess.TimeoutExpired:
+        return False, "timed out"
+    except Exception as exc:
+        return False, str(exc)
+
+
+class UpdateCenter(Adw.ApplicationWindow):
+    def __init__(self, application):
+        super().__init__(application=application, title="Winacux Update Center",
+                         default_width=640, default_height=600)
+
+        header = Adw.HeaderBar()
+        self.set_content(header)
+        header.set_title_widget(Adw.WindowTitle.new("Update Center",
+                                                    "Snapshot first, roll back any time"))
+
+        self._status = Adw.ToastOverlay()
+        self.set_content(self._status)
+
+        page = Adw.PreferencesPage()
+        self._status.set_child(page)
+
+        # ------------------------------------------------- failed boot banner
+        self._recovery = Adw.PreferencesGroup()
+        page.add_group(self._recovery)
+        self._recovery_row = Adw.ActionRow(
+            title="The last boot did not finish",
+            subtitle="Roll back to the last known-good snapshot")
+        restore_button = Gtk.Button(label="Restore now", valign=Gtk.Align.CENTER)
+        restore_button.add_css_class("destructive-action")
+        restore_button.connect("clicked", lambda *_: self._rollback())
+        self._recovery_row.add_suffix(restore_button)
+        self._recovery.add(self._recovery_row)
+        self._check_failed_boot()
+
+        # ---------------------------------------------------------- updates
+        updates = Adw.PreferencesGroup(title="Updates",
+                                       description="A snapshot is taken before anything is applied.")
+        page.add_group(updates)
+
+        check_row = Adw.ActionRow(title="Check for updates")
+        check_button = Gtk.Button(label="Check", valign=Gtk.Align.CENTER)
+        check_button.connect("clicked", lambda *_: self._check())
+        check_row.add_suffix(check_button)
+        updates.add(check_row)
+
+        self._pending = Adw.ActionRow(title="Pending updates", subtitle="not checked yet")
+        apply_button = Gtk.Button(label="Update all", valign=Gtk.Align.CENTER)
+        apply_button.add_css_class("suggested-action")
+        apply_button.connect("clicked", lambda *_: self._apply())
+        self._pending.add_suffix(apply_button)
+        updates.add(self._pending)
+
+        # -------------------------------------------------------- snapshots
+        snapshots = Adw.PreferencesGroup(
+            title="Snapshots",
+            description="Restore points created before updates or on demand.")
+        page.add_group(snapshots)
+
+        self._snapshot_row = Adw.ActionRow(title="Snapshots", subtitle="loading…")
+        snapshots.add(self._snapshot_row)
+
+        create_row = Adw.ActionRow(title="Create a snapshot now")
+        create_button = Gtk.Button(label="Create", valign=Gtk.Align.CENTER)
+        create_button.connect("clicked", lambda *_: self._create_snapshot())
+        create_row.add_suffix(create_button)
+        snapshots.add(create_row)
+
+        self._load_snapshots()
+
+    # ------------------------------------------------------------- helpers
+
+    def _threaded(self, work, on_done):
+        def run_it():
+            ok, output = work()
+            GLib.idle_add(on_done, ok, output)
+        GLib.idle_add(run_it)  # ensure we start from the main loop
+
+    def _check_failed_boot(self):
+        # winacux-boot-success.service removes the marker once the desktop has
+        # been up for a while; if it is still there, the previous boot died.
+        marker = STATE_DIR / "boot-in-progress"
+        self._recovery_row.set_visible(marker.exists())
+
+    def _check(self):
+        self._pending.set_subtitle("checking…")
+
+        def work():
+            return run([WCX, "update", "check"])
+        self._threaded(work, lambda ok, output: self._show_update_result(ok, output))
+
+    def _show_update_result(self, ok, output):
+        self._pending.set_subtitle(output.splitlines()[-1] if output else "no answer")
+        self._status.add_toast(Adw.Toast.new("Update check finished"))
+        self._load_snapshots()
+
+    def _apply(self):
+        self._pending.set_subtitle("snapshotting and updating, this takes a while…")
+
+        def work():
+            return run([WCX, "update", "apply"], timeout=3600)
+        self._threaded(work, lambda ok, output: self._show_apply_result(ok, output))
+
+    def _show_apply_result(self, ok, output):
+        if ok:
+            self._pending.set_subtitle("updates applied - reboot to finish")
+            self._status.add_toast(Adw.Toast.new("Updates applied. Reboot when ready."))
+        else:
+            self._pending.set_subtitle("update failed")
+            self._status.add_toast(Adw.Toast.new("Update failed - a snapshot is safe"))
+        self._load_snapshots()
+
+    def _create_snapshot(self):
+        def work():
+            return run([WCX, "snapshot", "create"])
+        self._threaded(work, lambda ok, output: self._load_snapshots())
+
+    def _rollback(self):
+        self._status.add_toast(Adw.Toast.new("Restoring the newest snapshot…"))
+
+        def work():
+            return run([WCX, "update", "rollback"], timeout=1800)
+        self._threaded(work, lambda ok, output: self._status.add_toast(
+            Adw.Toast.new("Restored. Reboot to return to your system." if ok else "Restore failed")))
+
+    def _load_snapshots(self):
+        def work():
+            return run([WCX, "snapshot", "list"])
+        self._threaded(work, self._show_snapshots)
+
+    def _show_snapshots(self, ok, output):
+        lines = [line for line in output.splitlines() if line.strip()]
+        # Timeshift prints a header line, then one row per snapshot.
+        rows = [line for line in lines if line.strip().startswith("O") or
+                "-" in line and ">" in line]
+        if not rows:
+            self._snapshot_row.set_subtitle("none yet - one is created before every update")
+            return
+        self._snapshot_row.set_subtitle(f"{len(rows)} snapshot(s), newest first: "
+                                        f"{rows[0].strip()[:60]}")
+
+
+class UpdateApplication(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID)
+
+    def do_activate(self):
+        UpdateCenter(self).present()
+
+
+def main():
+    UpdateApplication().run([])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

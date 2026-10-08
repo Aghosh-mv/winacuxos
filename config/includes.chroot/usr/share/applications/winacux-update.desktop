@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Winacux Update Center
+GenericName=Software Updates
+Comment=Snapshot-first updates with one-click rollback
+Exec=winacux-update
+Icon=winacux-update
+Terminal=false
+Categories=System;Settings;

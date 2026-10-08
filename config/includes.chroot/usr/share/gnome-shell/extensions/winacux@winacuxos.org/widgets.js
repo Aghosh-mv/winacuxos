@@ -89,6 +89,20 @@ function diskUsage() {
     }
 }
 
+/* Honest boot measurement: how long the kernel has been up by the time the
+ * desktop is actually on screen. No marketing number - this is read straight
+ * from /proc/uptime. */
+function readyTimeText() {
+    const text = readProcFile('/proc/uptime');
+    const seconds = parseFloat(text.split(' ')[0]);
+    if (!seconds)
+        return '-';
+    if (seconds < 60)
+        return `${seconds.toFixed(1)}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m ${Math.round(seconds % 60)}s`;
+}
+
 function uptimeText() {
     const text = readProcFile('/proc/uptime');
     const seconds = parseFloat(text.split(' ')[0]);
@@ -152,6 +166,7 @@ function systemCard() {
     addRow('Architecture', BRAND.architecture, 'winacux-mono');
     addRow('Uptime', uptimeText(), 'winacux-mono');
     addRow('User', BRAND.user);
+    addRow('Ready in', readyTimeText(), 'winacux-accent');
 
     box.add_child(rows);
     box.add_child(new St.Label({

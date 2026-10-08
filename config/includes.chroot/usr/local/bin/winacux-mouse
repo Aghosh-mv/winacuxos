@@ -117,6 +117,25 @@ class MouseSettings(Adw.ApplicationWindow):
                 active=self._winacux.get_boolean("cursor-trail"))
             trail_switch.connect("notify::active", self._on_trail_toggle)
             trail.add(trail_switch)
+            preset_row = Adw.ComboRow(title="Trail preset",
+                                      subtitle="How the trail moves")
+            for label, value in (("Comet", "comet"), ("Lava", "lava"),
+                                 ("Pixel", "pixel"), ("Sparks", "spark"),
+                                 ("Off", "off")):
+                preset_row.append(label, value)
+            current = self._winacux.get_string("cursor-fx-preset")
+            for index, (_label, value) in enumerate((("Comet", "comet"), ("Lava", "lava"),
+                                                     ("Pixel", "pixel"), ("Sparks", "spark"),
+                                                     ("Off", "off"))):
+                if value == current:
+                    preset_row.set_selected(index)
+                    break
+            preset_row.connect("notify::selected",
+                               lambda r, *_a: self._winacux.set_string(
+                                   "cursor-fx-preset",
+                                   r.get_selected_item().get_string()))
+            trail.add(preset_row)
+
             trail.add(self._spin_row("Length", "cursor-trail-length", 6, 48, 1,
                                      "Nodes in the chain"))
             trail.add(self._spin_row("Thickness", "cursor-trail-spread", 2, 24, 1,

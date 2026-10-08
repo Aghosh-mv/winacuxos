@@ -65,4 +65,9 @@
     <summary>Accent/theme override stylesheet</summary>
     <description>Path written by Theme Studio. Reloaded live when the file changes.</description>
   </key>
+<key name="cursor-fx-preset" type="s">
+    <default>'comet'</default>
+    <summary>Cursor FX preset</summary>
+    <description>Trail personality: comet, lava, pixel, spark or off.</description>
+  </key>
 </gsettings>
