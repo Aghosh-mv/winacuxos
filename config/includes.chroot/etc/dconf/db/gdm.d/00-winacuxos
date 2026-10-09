@@ -1,0 +1,13 @@
+# WinacuxOS branding for the GDM greeter.
+
+[org/gnome/login-screen]
+logo='/usr/share/winacuxos/logo-gdm.png'
+disable-user-availability=true
+
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/winacuxos/winacuxos.png'
+
+[org/gnome/desktop/interface]
+color-scheme='prefer-dark'
+accent-color='blue'
+font-name='Inter 11'

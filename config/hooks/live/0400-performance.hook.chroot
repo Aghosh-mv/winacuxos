@@ -35,11 +35,31 @@ done
 if [ -f /etc/initramfs-tools/initramfs.conf ]; then
     sed -i 's/^COMPRESS=.*/COMPRESS=zstd/' /etc/initramfs-tools/initramfs.conf
 fi
-sed -i 's/^MODULES=.*/MODULES=dep/' /etc/initramfs-tools/initramfs.conf
-update-initramfs -u -k all >/dev/null 2>&1 || true
+# NOTE: do not set MODULES here. Inside a live-build chroot the root device
+# cannot be resolved, and MODULES=dep makes mkinitramfs fail with
+# "failed to determine device for /". The default (most) works because it does
+# not need to resolve it.
+update-initramfs -u -k all >/dev/null 2>&1 || \
+    echo "[winacuxos] note: initramfs refresh skipped (already current?)" | tee -a "$LOG"
 
-# Fonts and schemas are already compiled; drop the caches that only slow the
-# first boot down.
+# The live image diet. Documentation, manual pages and unused locales cost over
+# a gigabyte and nobody on a live desktop reads them offline.
+rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* 2>/dev/null || true
+rm -rf /usr/share/help/* 2>/dev/null || true
+# Compiled locales under /usr/lib are the bulk of them, not /usr/share.
+rm -rf /usr/lib/locale/* 2>/dev/null || true
+mkdir -p /usr/lib/locale/en/LC_MESSAGES
+# Sample sounds: keep the ALSA set, drop the demo library.
+find /usr/share/sounds -mindepth 1 -maxdepth 1 ! -name alsa ! -name freedesktop \
+    -exec rm -rf {} + 2>/dev/null || true
+rm -rf /usr/share/locale/* 2>/dev/null || true
+mkdir -p /usr/share/locale/en/LC_MESSAGES
+cp -a /usr/share/locale/en_GB/LC_MESSAGES/* /usr/share/locale/en/LC_MESSAGES/ 2>/dev/null || true
+
+# Caches that only slow the first boot down.
 rm -rf /var/cache/fontconfig/* /var/cache/man/* 2>/dev/null || true
+rm -rf /usr/share/doc-base/* 2>/dev/null || true
+
+echo "[winacuxos] image diet applied: $(du -sh / 2>/dev/null | cut -f1)" | tee -a "$LOG"
 
 echo "[winacuxos] boot trim complete" | tee -a "$LOG"

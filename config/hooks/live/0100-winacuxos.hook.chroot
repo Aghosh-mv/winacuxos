@@ -93,10 +93,35 @@ EOF
     fi
 fi
 
+# ------------------------------------------------- first boot experience
+# GNOME's own welcome balloon ("Welcome to <distro>") is not WinacuxOS. Mask it
+# and let the Winacux welcome take its place.
+mkdir -p /etc/dconf/db/local.d
+cat > /etc/dconf/db/local.d/01-winacux-firstboot <<'EOF'
+
+[org/gnome/desktop/initial-setup]
+thirdparty-notice=true
+EOF
+
+for unit in gnome-initial-setup.service; do
+    if systemctl list-unit-files 2>/dev/null | grep -q "$unit"; then
+        systemctl --quiet mask "$unit" >/dev/null 2>&1 || true
+        echo "[winacuxos] masked $unit" | tee -a "$LOG"
+    fi
+done
+
+# A serial console makes the image debuggable and scriptable from another
+# machine - that is how the boot tests drive it.
+systemctl enable serial-getty@ttyS0.service >/dev/null 2>&1 || true
+
 # ---------------------------------------------------------------- services
 echo "[winacuxos] enabling WinacuxOS services" | tee -a "$LOG"
-for unit in winacux-ai.service winacux-recovery.service \
-            winacux-boot-attempt.service winacux-boot-success.service; do
+# Only enable the AI service when llama.cpp actually made it into the image;
+# otherwise a slim build without the AI stage starts a unit that cannot work.
+UNITS="winacux-recovery.service winacux-boot-attempt.service winacux-boot-success.service"
+[ -x /usr/local/bin/llama-server ] && UNITS="winacux-ai.service $UNITS"
+
+for unit in $UNITS; do
     if [ -f "/etc/systemd/system/$unit" ]; then
         systemctl enable "$unit" >/dev/null 2>&1 || \
             echo "[winacuxos] note: could not enable $unit" | tee -a "$LOG"
@@ -105,6 +130,23 @@ done
 
 # ---------------------------------------------------------------- dconf
 echo "[winacuxos] compiling dconf system database" | tee -a "$LOG"
+
+# The session only reads /etc/dconf/db/local.d through /etc/dconf/profile/user.
+# If that profile is missing, every default we ship is silently ignored - which
+# is exactly what happened in an earlier build.
+if [ ! -f /etc/dconf/profile/user ]; then
+    echo "[winacuxos] FATAL: /etc/dconf/profile/user is missing" | tee -a "$LOG"
+    exit 1
+fi
+
 dconf update
+
+# Prove the system database is really readable, not just present.
+if dconf dump /org/gnome/shell/extensions/dash-to-dock/ 2>/dev/null | grep -q dock-position; then
+    echo "[winacuxos] system defaults are live (dconf reads them back)" | tee -a "$LOG"
+else
+    echo "[winacuxos] FATAL: dconf does not return our defaults - sessions would ignore them" | tee -a "$LOG"
+    exit 1
+fi
 
 echo "[winacuxos] chroot hook finished" | tee -a "$LOG"

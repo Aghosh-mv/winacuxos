@@ -1,0 +1,3 @@
+# dconf profile for the GDM greeter, so the login screen gets our branding too.
+userdb:user
+system-db:local

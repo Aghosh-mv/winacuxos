@@ -19,6 +19,11 @@ console-setup
 plymouth
 plymouth-themes
 initramfs-tools
+zstd
+# live-build runs mksquashfs/mkfs.vfat inside the chroot when it builds
+# the rootfs and the EFI partition, so these must be present there.
+squashfs-tools
+dosfstools
 usbutils
 pciutils
 lsof

@@ -42,6 +42,18 @@ scripts/Dockerfile ───────┴──▶ live-build ──▶ build-
 | `0300-theme` | derives the `Winacux` shell theme from whatever stylesheet GNOME ships, then appends our overrides |
 | `0400-performance` | trims boot time: disables services a live session never needs, switches initramfs to zstd |
 
+## Shipped defaults only work through /etc/dconf/profile/user
+
+Debian 13 does not ship a dconf profile for user sessions. Without
+`/etc/dconf/profile/user` containing `system-db:local`, GNOME never reads
+`/etc/dconf/db/local.d` - so an image can carry a wallpaper, a left dock, four
+enabled extensions, an accent colour, Inter and a cursor theme, and still boot
+looking like stock Debian.
+
+This is checked at build time: `0100-winacuxos.hook.chroot` fails the build if
+the profile is missing, and then reads the values back with `dconf dump` to
+prove the database is live rather than merely present.
+
 ## The shell extension: `winacux@winacuxos.org`
 
 Installed to `/usr/share/gnome-shell/extensions/winacux@winacuxos.org`.

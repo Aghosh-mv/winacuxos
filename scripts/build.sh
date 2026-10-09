@@ -65,6 +65,10 @@ docker run --rm --privileged \
             --exclude "build-out/" \
             --exclude "*.iso" \
             --exclude "*.log" \
+            --exclude "ai/models/" \
+            --exclude "ai/.venv/" \
+            --exclude "ai/out/" \
+            --exclude "artifacts/" \
             /src/ /build/
         cd /build
 
@@ -99,8 +103,34 @@ docker run --rm --privileged \
         echo "==> generating config"
         ./scripts/lb-config.sh
 
-        echo "==> lb build"
-        lb build
+        # Run the stages separately. This is not cosmetic: the chroot and the
+        # package cache coexist on a 19GB VM disk, and purging the cache before
+        # image assembly is the difference between a build that fits and one
+        # that dies with "no space left on device".
+        echo "==> lb bootstrap"
+        lb bootstrap
+
+        echo "==> lb chroot (packages + hooks)"
+        lb chroot
+
+        echo "==> disk usage after the chroot stage:"
+        du -sh /build/chroot /build/cache 2>/dev/null || true
+
+        # Free the downloaded .debs but KEEP the directory itself: live-build
+        # bind-mounts the archive dir into the chroot as the apt cache, and lb
+        # binary_rootfs installs squashfs-tools through that mount.
+        # Deleting the directory (or running out of space inside it) makes that
+        # stage fail with a misleading "not enough free space" error.
+        echo "==> purging cached .debs (keeping the archive dir)"
+        find /build/cache/archives -maxdepth 1 -name "*.deb" -delete 2>/dev/null || true
+        du -sh /build/cache /build/chroot 2>/dev/null || true
+
+        echo "==> lb binary (squashfs + ISO)"
+        lb binary
+
+        echo "==> build finished, freeing the build cache"
+        rm -rf /build/cache /build/auto /build/build
+        du -sh /build 2>/dev/null || true
 
         for list in dev apps firmware; do
             [ -f "config/package-lists/$list.list.skip" ] && \

@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         squashfs-tools \
         mtools \
         git \
+        dpkg-dev \
+        apt-utils \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

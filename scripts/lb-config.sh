@@ -9,7 +9,21 @@
 set -euo pipefail
 
 ARCH="${WCX_ARCH:-arm64}"
+SLIM="${WCX_SLIM:-0}"
 export LC_ALL=C
+
+# live-build ships its own firmware stage that pulls every non-free firmware
+# blob in the archive - around 2GB. Real images need it; a slim verification
+# image does not, so slim turns both the stage and the archive area off.
+if [ "$SLIM" = "1" ]; then
+    ARCHIVE_AREAS="main contrib non-free"
+    FIRMWARE_CHROOT="false"
+    FIRMWARE_BINARY="false"
+else
+    ARCHIVE_AREAS="main contrib non-free non-free-firmware"
+    FIRMWARE_CHROOT="true"
+    FIRMWARE_BINARY="true"
+fi
 
 case "$ARCH" in
     arm64)
@@ -48,10 +62,12 @@ done
 lb config nointeractive \
     --distribution trixie \
     --architectures "$ARCH" \
-    --archive-areas "main contrib non-free non-free-firmware" \
+    --archive-areas "$ARCHIVE_AREAS" \
     --binary-images "$BINARY_IMAGES" \
     --bootloaders "$BOOTLOADERS" \
     --debian-installer none \
+    --firmware-chroot "$FIRMWARE_CHROOT" \
+    --firmware-binary "$FIRMWARE_BINARY" \
     --iso-application "WinacuxOS" \
     --iso-publisher "WinacuxOS Project" \
     --iso-volume "WINACUXOS_1.0" \
