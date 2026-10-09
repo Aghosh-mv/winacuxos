@@ -18,4 +18,4 @@ command -v wcx wcx-cursors winacux-mouse winacux-theme winacux-update winacux-re
 echo liveboot | sudo -S journalctl -b --no-pager 2>/dev/null | grep -c "WinacuxOS: extension enabled"
 echo liveboot | sudo -S journalctl -b --no-pager 2>/dev/null | grep -icE "extension error|Failed to load|not compatible"'
 
-"$ROOT/scripts/vm-shell.sh" "$CHECKS"
+"$ROOT/scripts/vm-shell.py" "$CHECKS"

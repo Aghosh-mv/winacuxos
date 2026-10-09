@@ -51,6 +51,11 @@ for s in "$ROOT"/scripts/*.sh; do
     printf '    %-46s ' "$(basename "$s")"
     if bash -n "$s" 2>/dev/null; then echo OK; else echo FAIL; fail=1; fi
 done
+for s in "$ROOT"/scripts/*.py; do
+    [ -e "$s" ] || continue
+    printf '    %-46s ' "$(basename "$s")"
+    if python3 -m py_compile "$s" 2>/dev/null; then echo OK; else echo FAIL; fail=1; fi
+done
 
 echo "==> asset sources"
 for a in "$ROOT"/branding/logo.svg "$ROOT"/branding/wallpaper.svg; do
