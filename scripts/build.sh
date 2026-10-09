@@ -52,6 +52,7 @@ docker run --rm --privileged \
     -e CLEAN="$CLEAN" \
     -e WINACUX_AI="${WINACUX_AI:-1}" \
     -e WCX_ARCH="$ARCH" \
+    -e WCX_SLIM="$SLIM" \
     -v "$ROOT":/src:ro \
     -v "$VOLUME":/build \
     -v "$OUT":/out \
@@ -77,11 +78,23 @@ docker run --rm --privileged \
 
         # Slim mode: park the heavy lists so the image stays small and fast.
         SLIM="${WCX_SLIM:-0}"
-        for list in dev apps; do
+        # Slim skips the big lists: dev toolchains, the app suite and the
+        # non-free firmware blobs. None of it is needed to verify the desktop,
+        # the shell extension or the AI in a virtual machine, and skipping them
+        # cuts the chroot from ~9GB to ~3GB - which matters a lot on a laptop.
+        for list in dev apps firmware; do
             if [ "$SLIM" = "1" ] && [ -f "config/package-lists/$list.list" ]; then
                 mv "config/package-lists/$list.list" "config/package-lists/$list.list.skip"
             fi
         done
+
+        # Marker file for hooks, because hook environments are sanitised.
+        if [ "${WINACUX_AI:-1}" != "1" ]; then
+            mkdir -p config/includes.chroot/etc
+            touch config/includes.chroot/etc/winacuxos-skip-ai
+        else
+            rm -f config/includes.chroot/etc/winacuxos-skip-ai
+        fi
 
         echo "==> generating config"
         ./scripts/lb-config.sh
@@ -89,7 +102,7 @@ docker run --rm --privileged \
         echo "==> lb build"
         lb build
 
-        for list in dev apps; do
+        for list in dev apps firmware; do
             [ -f "config/package-lists/$list.list.skip" ] && \
                 mv "config/package-lists/$list.list.skip" "config/package-lists/$list.list"
         done

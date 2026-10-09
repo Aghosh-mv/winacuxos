@@ -6,10 +6,10 @@
 set -e
 
 LOG=/var/log/winacuxos-build.log
-WINACUX_AI="${WINACUX_AI:-1}"
-
-if [ "$WINACUX_AI" != "1" ]; then
-    echo "[winacuxos] skipping the AI stage (WINACUX_AI=$WINACUX_AI)" | tee -a "$LOG"
+# live-build does not pass the outer environment into chroot hooks, so the
+# opt-out travels as a marker file instead of an env var.
+if [ -f /etc/winacuxos-skip-ai ]; then
+    echo "[winacuxos] skipping the AI stage (marker present)" | tee -a "$LOG"
     exit 0
 fi
 

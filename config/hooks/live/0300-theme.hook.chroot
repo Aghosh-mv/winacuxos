@@ -1,96 +1,34 @@
 #!/bin/sh
-# Builds the WinacuxOS shell theme.
+# Appearance policy for WinacuxOS.
 #
-# Rather than shipping a full GNOME Shell stylesheet (thousands of lines that
-# rot on every GNOME update), we derive "Winacux" from whatever stylesheet the
-# installed GNOME provides and append our own overrides. If no stylesheet can
-# be found the build fails loudly instead of shipping a broken shell.
+# An earlier version of this hook tried to derive a custom GNOME Shell theme
+# ("Winacux") from the shell stylesheet. That turned out to be impossible on
+# Debian 13: gnome-shell ships no gnome-shell.css on disk and its resources are
+# not extractable with gresource, so there is nothing to derive from - and
+# pointing the user-theme extension at a non-existent theme file breaks the
+# whole shell at login.
+#
+# So WinacuxOS does theming the way that actually works:
+#   * the shell extension's own stylesheet (widgets, palette, composer, dock)
+#   * GNOME's own settings (accent colour, light/dark, font, icon theme)
+#   * blur-my-shell for the glassy panels
+#   * Theme Studio, which rewrites ~/.config/winacux/theme.css live
 set -e
 
 LOG=/var/log/winacuxos-build.log
-THEME_DIR=/usr/share/themes/Winacux
+echo "[winacuxos] appearance policy: extension CSS + GNOME settings" | tee -a "$LOG"
 
-find_base_css() {
-    for candidate in \
-        /usr/share/themes/Adwaita/gnome-shell.css \
-        /usr/share/themes/Adwaita-dark/gnome-shell.css \
-        /usr/share/gnome-shell/theme/Adwaita/gnome-shell.css \
-        /usr/share/gnome-shell/theme/gnome-shell.css
-    do
-        if [ -s "$candidate" ]; then
-            echo "$candidate"
-            return 0
-        fi
-    done
-
-    # Fall back to the compiled resource inside libgnome-shell.
-    for so in /usr/lib/gnome-shell/libgnome-shell.so /usr/lib/gnome-shell/libgnome-shell; do
-        [ -f "$so" ] || continue
-        if command -v gresource >/dev/null 2>&1; then
-            res=$(gresource list "$so" 2>/dev/null | grep -E 'theme/.*gnome-shell.*\.css$' | head -1)
-            [ -n "$res" ] || continue
-            if gresource extract "$so" "$res" > /tmp/winacux-base.css 2>/dev/null &&
-               [ -s /tmp/winacux-base.css ]; then
-                echo "/tmp/winacux-base.css"
-                return 0
-            fi
-        fi
-    done
-    return 1
-}
-
-BASE=$(find_base_css) || {
-    echo "[winacuxos] FATAL: no base shell stylesheet found" | tee -a "$LOG"
+# Verify the extension stylesheet really is in place - that, not a shell theme
+# file, is what carries the WinacuxOS look.
+EXT=/usr/share/gnome-shell/extensions/winacux@winacuxos.org
+if [ ! -s "$EXT/stylesheet.css" ]; then
+    echo "[winacuxos] FATAL: extension stylesheet missing - the desktop would be unstyled" | tee -a "$LOG"
     exit 1
-}
+fi
 
-echo "[winacuxos] deriving the Winacux shell theme from $BASE" | tee -a "$LOG"
-rm -rf "$THEME_DIR"
-mkdir -p "$THEME_DIR"
-cp "$BASE" "$THEME_DIR/gnome-shell.css"
+echo "[winacuxos] $(wc -l < "$EXT/stylesheet.css") lines of shell styling present" | tee -a "$LOG"
 
-cat >> "$THEME_DIR/gnome-shell.css" <<'CSS'
-
-/* ===================== WinacuxOS overrides ===================== */
-
-stage {
-    font-family: 'Inter';
-}
-
-/* top bar: glassy, like the mockup */
-#panel {
-    background-color: rgba(11, 18, 32, 0.55);
-    font-weight: 500;
-}
-
-#panel .panel-button {
-    color: #e6ecf5;
-}
-
-/* overview / app grid */
-.overview {
-    background-color: rgba(5, 9, 28, 0.72);
-}
-
-.search-entry {
-    background-color: rgba(255, 255, 255, 0.10);
-    border-radius: 18px;
-    color: #f5f7fa;
-}
-
-.window-picker {
-    spacing: 12px;
-}
-
-.window-clone-border {
-    border: 2px solid #7b5cff;
-    border-radius: 12px;
-}
-
-.modal-dialog {
-    border-radius: 18px;
-    background-color: rgba(11, 18, 32, 0.92);
-}
-CSS
-
-echo "[winacuxos] Winacux shell theme written ($(wc -l < "$THEME_DIR/gnome-shell.css") lines)" | tee -a "$LOG"
+# The stock shell theme must stay in place: user-theme must never be pointed at
+# a file we do not ship.
+mkdir -p /usr/share/themes
+echo "[winacuxos] leaving the stock shell theme in place (on purpose)" | tee -a "$LOG"
