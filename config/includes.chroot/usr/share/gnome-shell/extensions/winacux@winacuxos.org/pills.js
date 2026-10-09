@@ -3,7 +3,6 @@
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {getWorkspaceManager} from 'resource:///org/gnome/shell/ui/workspace.js';
 
 const FLOWS = [
     {name: 'Study', key: 'study'},
@@ -34,7 +33,7 @@ export function createPillsBar(runFlow) {
 
     /* Workspace pills: 1 2 3 4 */
     const pills = new St.BoxLayout({style_class: 'winacux-pills'});
-    const workspaceManager = getWorkspaceManager();
+    const workspaceManager = global.workspace_manager;
 
     const rebuild = () => {
         pills.destroy_all_children();

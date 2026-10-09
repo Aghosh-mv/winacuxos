@@ -28,4 +28,17 @@ for name in $names; do
         cp "/build/$(basename "$name")" "/out/$(basename "$name")"
 done
 
+echo "==> verifying the copy"
+for name in $names; do
+    src_size=$(docker run --rm -v "$VOLUME":/build:ro debian:trixie-slim \
+                   stat -c %s "/build/$(basename "$name")" | tr -d '[:space:]')
+    dst_size=$(stat -f %z "$OUT/$(basename "$name")" 2>/dev/null || echo 0)
+    if [ "$src_size" != "$dst_size" ]; then
+        echo "!! truncated copy: source $src_size bytes, destination $dst_size bytes" >&2
+        echo "   the ISO is still in the VM volume - retry before stopping Colima" >&2
+        exit 1
+    fi
+    echo "    $(basename "$name"): $dst_size bytes, complete"
+done
+
 ls -lh "$OUT"/*.iso

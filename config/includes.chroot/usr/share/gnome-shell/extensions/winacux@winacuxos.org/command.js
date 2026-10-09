@@ -16,7 +16,6 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Soup from 'gi://Soup?version=3.0';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {getWorkspaceManager} from 'resource:///org/gnome/shell/ui/workspace.js';
 
 const WCX = '/usr/local/bin/wcx';
 const AI_HOST = '127.0.0.1';
@@ -194,13 +193,13 @@ function systemActions() {
             run: () => GLib.spawn_command_line_async(`${WCX} mouse`)},
         {title: 'Next workspace', detail: 'QuickSpace', keywords: 'workspace next switch desktop',
             run: () => {
-                const manager = getWorkspaceManager();
+                const manager = global.workspace_manager;
                 manager.get_active_workspace().activate();
                 Main.overview.show();
             }},
         {title: 'Previous workspace', detail: 'QuickSpace', keywords: 'workspace previous back desktop',
             run: () => {
-                const manager = getWorkspaceManager();
+                const manager = global.workspace_manager;
                 manager.get_active_workspace().activate();
                 Main.overview.show();
             }},

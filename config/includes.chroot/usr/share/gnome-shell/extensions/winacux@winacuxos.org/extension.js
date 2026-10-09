@@ -20,6 +20,10 @@ export default class WinacuxExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
 
+        // Logged so boot tests can prove the extension loaded, instead of
+        // inferring it from pixels.
+        console.log('WinacuxOS: extension enabled');
+
         this._addStyle();
 
         /* Flow engine (also backs the "wcx flow" CLI) */

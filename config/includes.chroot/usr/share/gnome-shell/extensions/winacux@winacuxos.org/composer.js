@@ -143,7 +143,14 @@ const WinacuxComposer = GObject.registerClass({
             if (!compositor || typeof compositor.clone_new !== 'function')
                 return null;
 
-            const clone = compositor.clone_new(Clutter.CloneFlags.FULL_RECT);
+            // Recent mutter dropped the CloneFlags argument; try the modern
+            // signature first and fall back to the old one.
+            let clone;
+            try {
+                clone = compositor.clone_new();
+            } catch (e) {
+                clone = compositor.clone_new(Clutter.CloneFlags.FULL_RECT);
+            }
             const [x, y, width, height] = meta.get_transformed_frame();
             if (width > 0 && height > 0) {
                 const scale = Math.min(CARD_WIDTH / width, 1);

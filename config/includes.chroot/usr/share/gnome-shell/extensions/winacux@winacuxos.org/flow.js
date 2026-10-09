@@ -20,7 +20,6 @@ import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {getWorkspaceManager} from 'resource:///org/gnome/shell/ui/workspace.js';
 
 const CONFIG_DIR = GLib.build_filenamev([GLib.get_home_dir(), '.config', 'winacux']);
 const FLOWS_DIR = GLib.build_filenamev([CONFIG_DIR, 'flows']);
@@ -161,7 +160,7 @@ export class FlowEngine {
             return;
         }
 
-        const workspaces = getWorkspaceManager();
+        const workspaces = global.workspace_manager;
         const index = Math.max(0, Math.min(flow.workspace ?? 0, workspaces.get_n_workspaces() - 1));
         workspaces.get_workspace_by_index(index).activate();
         Main.overview.hide();

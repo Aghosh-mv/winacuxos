@@ -103,12 +103,13 @@ cat > /etc/dconf/db/local.d/01-winacux-firstboot <<'EOF'
 thirdparty-notice=true
 EOF
 
-for unit in gnome-initial-setup.service; do
-    if systemctl list-unit-files 2>/dev/null | grep -q "$unit"; then
-        systemctl --quiet mask "$unit" >/dev/null 2>&1 || true
-        echo "[winacuxos] masked $unit" | tee -a "$LOG"
-    fi
-done
+# Masking the unit was not enough: the balloon is started by the greeter
+# session. Removing the package is the only reliable way, and WinacuxOS has its
+# own first-boot experience to ship instead.
+if dpkg -s gnome-initial-setup >/dev/null 2>&1; then
+    apt-get purge -y --auto-remove gnome-initial-setup >/dev/null 2>&1 || true
+    echo "[winacuxos] removed gnome-initial-setup (its own welcome replaces it)" | tee -a "$LOG"
+fi
 
 # A serial console makes the image debuggable and scriptable from another
 # machine - that is how the boot tests drive it.
