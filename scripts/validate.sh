@@ -37,7 +37,20 @@ echo "==> GSettings schemas"
 for x in "$EXT"/schemas/*.xml; do
     [ -e "$x" ] || continue
     printf '    %-52s ' "$(basename "$x")"
-    if xmllint --noout "$x" 2>/dev/null; then echo OK; else echo FAIL; fail=1; fi
+    # Extension schemas must use <schemalist>/<schema>. The <gsettings
+    # schema="..."> form belongs to dconf keyfiles; glib-compile-schemas
+    # rejects it and silently drops every key, which left an earlier build with
+    # an extension that could not read its own settings.
+    root=$(xmllint --xpath 'name(/*)' "$x" 2>/dev/null)
+    keys=$(xmllint --xpath 'count(/schemalist/schema/key)' "$x" 2>/dev/null || echo 0)
+    nodefault=$(xmllint --xpath 'count(/schemalist/schema/key[not(default)])' "$x" 2>/dev/null || echo 0)
+    noid=$(xmllint --xpath 'count(/schemalist/schema[not(@id) or not(@path)])' "$x" 2>/dev/null || echo 0)
+    if [ "$root" = "schemalist" ] && [ "$keys" -gt 0 ] && [ "$nodefault" = "0" ] && [ "$noid" = "0" ]; then
+        echo "OK ($keys keys)"
+    else
+        echo "FAIL (root=$root keys=$keys missing-default=$nodefault bad-schema=$noid)"
+        fail=1
+    fi
 done
 
 echo "==> shell scripts"

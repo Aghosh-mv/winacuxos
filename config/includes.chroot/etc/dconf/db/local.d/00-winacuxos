@@ -10,6 +10,8 @@ color-scheme='prefer-dark'
 accent-color='blue'
 font-name='Inter 11'
 icon-theme='Papirus'
+cursor-theme='Breeze'
+cursor-size=32
 
 [org/gnome/desktop/screensaver]
 picture-uri='file:///usr/share/backgrounds/winacuxos/winacuxos.png'

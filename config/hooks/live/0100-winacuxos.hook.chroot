@@ -72,20 +72,6 @@ if [ -d "$EXT_DIR" ]; then
     chmod +x /usr/local/bin/wcx /usr/local/bin/wcx-cursors /usr/local/bin/winacux-mouse
     chmod +x /etc/dpkg/dpkg.d/99-winacux-snapshot
 
-    # Cursor default: Breeze (KDE, MIT) ships with the image and can legally be
-    # redistributed. Anything else - Sweezy, Bibata, your own packs - is
-    # installed per-user through Cursor Studio, because those licences forbid
-    # redistribution.
-    if [ -d /usr/share/icons/Breeze ] && ! grep -q 'cursor-theme' \
-         /etc/dconf/db/local.d/00-winacuxos 2>/dev/null; then
-        cat >> /etc/dconf/db/local.d/00-winacuxos <<'EOF'
-
-[org/gnome/desktop/interface]
-cursor-theme='Breeze'
-cursor-size=32
-EOF
-    fi
-
     # Fail loudly if the shell could never load the extension.
     if [ ! -f "$EXT_DIR/extension.js" ] || [ ! -f "$EXT_DIR/stylesheet.css" ]; then
         echo "[winacuxos] FATAL: WinacuxOS extension is incomplete" | tee -a "$LOG"

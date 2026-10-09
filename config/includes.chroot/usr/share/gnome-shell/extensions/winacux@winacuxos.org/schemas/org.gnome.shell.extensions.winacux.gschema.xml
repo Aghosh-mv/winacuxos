@@ -1,73 +1,82 @@
-<!-- WinacuxOS shell extension settings schema. -->
-
-<gsettings schema="org.gnome.shell.extensions.winacux" gettext-domain="winacuxos">
-  <key name="show-widgets" type="b">
-    <default>true</default>
-    <summary>Show desktop widget cards</summary>
-    <description>Show the WinacuxOS system, weather, usage and calendar cards.</description>
-  </key>
-  <key name="show-pills" type="b">
-    <default>true</default>
-    <summary>Show workspace pills in the top bar</summary>
-    <description>Show the 1 2 3 4 workspace switcher buttons.</description>
-  </key>
-  <key name="live-wallpaper" type="b">
-    <default>true</default>
-    <summary>Enable live wallpaper animation</summary>
-    <description>Animate the desktop wallpaper with a slow pan and glow.</description>
-  </key>
-  <key name="wallpaper-art" type="s">
-    <default>''</default>
-    <summary>Custom wallpaper artwork</summary>
-    <description>Absolute path to an image file. Empty uses the default WinacuxOS artwork.</description>
-  </key>
-<key name="cursor-trail" type="b">
-    <default>true</default>
-    <summary>Cursor trail</summary>
-    <description>Show a physics-driven trail behind the pointer.</description>
-  </key>
-  <key name="cursor-trail-length" type="i">
-    <default>22</default>
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WinacuxOS shell extension settings.
+     NOTE: extension schemas use the <schemalist>/<schema> layout. The
+     <gsettings schema="..."> form is for dconf keyfiles and glib-compile-schemas
+     rejects it - which silently left the whole extension without settings. -->
+<schemalist gettext-domain="winacuxos">
+  <schema id="org.gnome.shell.extensions.winacux" path="/org/gnome/shell/extensions/winacux/">
+    <key name="show-widgets" type="b">
+      <default>true</default>
+      <summary>Show desktop widget cards</summary>
+      <description>Show the WinacuxOS system, weather, usage and calendar cards.</description>
+    </key>
+    <key name="show-pills" type="b">
+      <default>true</default>
+      <summary>Show workspace pills in the top bar</summary>
+      <description>Show the 1 2 3 4 workspace switcher buttons.</description>
+    </key>
+    <key name="live-wallpaper" type="b">
+      <default>true</default>
+      <summary>Enable live wallpaper animation</summary>
+      <description>Animate the desktop wallpaper with a slow pan and glow.</description>
+    </key>
+    <key name="wallpaper-art" type="s">
+      <default>''</default>
+      <summary>Custom wallpaper artwork</summary>
+      <description>Absolute path to an image file. Empty uses the default WinacuxOS artwork.</description>
+    </key>
+    <key name="cursor-trail" type="b">
+      <default>true</default>
+      <summary>Cursor trail</summary>
+      <description>Show a physics-driven trail behind the pointer.</description>
+    </key>
+    <key name="cursor-trail-length" type="i">
     <range min="6" max="48"/>
-    <summary>Cursor trail length</summary>
-    <description>How many nodes make up the trail.</description>
-  </key>
-  <key name="cursor-trail-spread" type="i">
-    <default>9</default>
+      <default>22</default>
+      <range min="6" max="48"/>
+      <summary>Cursor trail length</summary>
+      <description>How many nodes make up the trail.</description>
+    </key>
+    <key name="cursor-trail-spread" type="i">
     <range min="2" max="24"/>
-    <summary>Cursor trail thickness</summary>
-    <description>Node radius in pixels.</description>
-  </key>
-  <key name="cursor-trail-gravity" type="d">
-    <default>0.0</default>
+      <default>9</default>
+      <range min="2" max="24"/>
+      <summary>Cursor trail thickness</summary>
+      <description>Node radius in pixels.</description>
+    </key>
+    <key name="cursor-trail-gravity" type="d">
     <range min="0.0" max="4.0"/>
-    <summary>Cursor trail gravity</summary>
-    <description>Extra downward pull on trail nodes.</description>
-  </key>
-  <key name="cursor-trail-fade" type="d">
-    <default>0.86</default>
+      <default>0.0</default>
+      <range min="0.0" max="4.0"/>
+      <summary>Cursor trail gravity</summary>
+      <description>Extra downward pull on trail nodes.</description>
+    </key>
+    <key name="cursor-trail-fade" type="d">
     <range min="0.5" max="0.98"/>
-    <summary>Cursor trail fade</summary>
-    <description>How quickly trail nodes fade out.</description>
-  </key>
-<key name="win-space" type="s">
-    <default>'&lt;Super&gt;space'</default>
-    <summary>Winacux Command shortcut</summary>
-    <description>Opens the Winacux Command palette.</description>
-  </key>
-  <key name="composer-toggle" type="s">
-    <default>'&lt;Alt&gt;Tab'</default>
-    <summary>Window Composer shortcut</summary>
-    <description>Opens the Winacux Window Composer.</description>
-  </key>
-<key name="theme-css" type="s">
-    <default>''</default>
-    <summary>Accent/theme override stylesheet</summary>
-    <description>Path written by Theme Studio. Reloaded live when the file changes.</description>
-  </key>
-<key name="cursor-fx-preset" type="s">
-    <default>'comet'</default>
-    <summary>Cursor FX preset</summary>
-    <description>Trail personality: comet, lava, pixel, spark or off.</description>
-  </key>
-</gsettings>
+      <default>0.86</default>
+      <range min="0.5" max="0.98"/>
+      <summary>Cursor trail fade</summary>
+      <description>How quickly trail nodes fade out.</description>
+    </key>
+    <key name="win-space" type="s">
+      <default>'&lt;Super&gt;space'</default>
+      <summary>Winacux Command shortcut</summary>
+      <description>Opens the Winacux Command palette.</description>
+    </key>
+    <key name="composer-toggle" type="s">
+      <default>'&lt;Alt&gt;Tab'</default>
+      <summary>Window Composer shortcut</summary>
+      <description>Opens the Winacux Window Composer.</description>
+    </key>
+    <key name="theme-css" type="s">
+      <default>''</default>
+      <summary>Accent/theme override stylesheet</summary>
+      <description>Path written by Theme Studio. Reloaded live when the file changes.</description>
+    </key>
+    <key name="cursor-fx-preset" type="s">
+      <default>'comet'</default>
+      <summary>Cursor FX preset</summary>
+      <description>Trail personality: comet, lava, pixel, spark or off.</description>
+    </key>
+  </schema>
+</schemalist>

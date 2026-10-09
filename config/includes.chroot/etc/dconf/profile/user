@@ -1,7 +1,1 @@
-# dconf profile for GNOME sessions.
-#
-# Without this file the session never reads /etc/dconf/db/local.d, which is why
-# an earlier WinacuxOS build booted with a stock wallpaper and a bottom dock
-# despite shipping every default. Debian 13 does not ship this profile.
-userdb:user
-system-db:local
+# dconf profile for GNOME sessions.\n# Debian 13 ships no profile, so without this the system database is never\n# read and every shipped default is silently ignored.\nuser\nsystem-db:local\n
