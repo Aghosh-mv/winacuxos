@@ -43,6 +43,18 @@ done
 
 mkdir -p "$OUT"
 
+# Preflight. The build needs headroom on the host for the Docker VM plus the
+# ~2GB ISO; running out mid-build used to leave the image stranded inside the
+# VM, which is unrecoverable once the VM crashes.
+NEEDED_MB=8000
+HAVE_MB=$(df -m "$ROOT" | awk 'NR==2 {print $4}')
+if [ "${HAVE_MB:-0}" -lt "$NEEDED_MB" ]; then
+    echo "!! not enough free space to build safely" >&2
+    echo "   need ~${NEEDED_MB}MB on $(df -h "$ROOT" | awk 'NR==2 {print $6}'), have ${HAVE_MB}MB" >&2
+    echo "   free some space and try again" >&2
+    exit 1
+fi
+
 echo "==> Building the builder image"
 docker build -t "$IMAGE" "$ROOT/scripts"
 
@@ -127,6 +139,12 @@ docker run --rm --privileged \
 
         echo "==> lb binary (squashfs + ISO)"
         lb binary
+
+        # Get the image onto the host FIRST. Everything after this point is
+        # cleanup, and losing the ISO to a VM crash is not recoverable.
+        echo "==> copying the ISO out of the VM"
+        mkdir -p /out
+        cp -v /build/*.iso /out/
 
         echo "==> build finished, freeing the build cache"
         rm -rf /build/cache /build/auto /build/build
