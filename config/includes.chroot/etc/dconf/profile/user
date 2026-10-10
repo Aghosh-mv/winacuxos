@@ -1,1 +1,6 @@
-# dconf profile for GNOME sessions.\n# Debian 13 ships no profile, so without this the system database is never\n# read and every shipped default is silently ignored.\nuser\nsystem-db:local\n
+# dconf profile for GNOME sessions.
+# Debian 13 ships none, so without it the system database is never read and
+# every default this image ships is silently ignored. The header form was
+# verified with scripts/test-dconf-profile.sh.
+user-db:user
+system-db:local

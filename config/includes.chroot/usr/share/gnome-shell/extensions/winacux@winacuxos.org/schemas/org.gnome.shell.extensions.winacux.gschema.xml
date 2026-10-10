@@ -33,28 +33,24 @@
     <key name="cursor-trail-length" type="i">
     <range min="6" max="48"/>
       <default>22</default>
-      <range min="6" max="48"/>
       <summary>Cursor trail length</summary>
       <description>How many nodes make up the trail.</description>
     </key>
     <key name="cursor-trail-spread" type="i">
     <range min="2" max="24"/>
       <default>9</default>
-      <range min="2" max="24"/>
       <summary>Cursor trail thickness</summary>
       <description>Node radius in pixels.</description>
     </key>
     <key name="cursor-trail-gravity" type="d">
     <range min="0.0" max="4.0"/>
       <default>0.0</default>
-      <range min="0.0" max="4.0"/>
       <summary>Cursor trail gravity</summary>
       <description>Extra downward pull on trail nodes.</description>
     </key>
     <key name="cursor-trail-fade" type="d">
     <range min="0.5" max="0.98"/>
       <default>0.86</default>
-      <range min="0.5" max="0.98"/>
       <summary>Cursor trail fade</summary>
       <description>How quickly trail nodes fade out.</description>
     </key>
