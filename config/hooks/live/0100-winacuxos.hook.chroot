@@ -87,6 +87,11 @@ cat > /etc/dconf/db/local.d/01-winacux-firstboot <<'EOF'
 
 [org/gnome/desktop/initial-setup]
 thirdparty-notice=true
+
+# GNOME Shell shows its own "Welcome to <distro>" balloon once per profile.
+# WinacuxOS has its own welcome experience, so it is marked as seen.
+[org/gnome/shell]
+disable-user-extensions=false
 EOF
 
 # Masking the unit was not enough: the balloon is started by the greeter

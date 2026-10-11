@@ -1,6 +1,7 @@
 /* WinacuxOS shell extension entry point. */
 
 import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk?version=4.0';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -24,7 +25,11 @@ export default class WinacuxExtension extends Extension {
         // inferring it from pixels.
         console.log('WinacuxOS: extension enabled');
 
-        this._addStyle();
+        try {
+            this._addStyle();
+        } catch (e) {
+            logError(e, 'Winacux: stylesheet setup failed; continuing unstyled');
+        }
 
         /* Flow engine (also backs the "wcx flow" CLI) */
         this._flow = new FlowEngine();
@@ -107,13 +112,59 @@ export default class WinacuxExtension extends Extension {
         this._removeStyle();
     }
 
+    /* GNOME 46 replaced St.CssProvider with GTK4's provider, and a missing
+     * stylesheet must never take the desktop down with it - so probe, and if
+     * neither path works, carry on unstyled. */
+    _loadCss(css) {
+        if (this._provider) {
+            try {
+                Main.getThemeContext().remove_provider(this._provider);
+            } catch (e) {
+                // old GNOME
+            }
+            this._provider = null;
+        }
+
+        try {
+            if (St.CssProvider) {
+                const provider = new St.CssProvider();
+                provider.load_from_data(css, null);
+                Main.getThemeContext().add_provider(provider, 1000);
+                this._provider = provider;
+                return;
+            }
+        } catch (e) {
+            logError(e, 'Winacux: St stylesheet path failed');
+        }
+
+        try {
+            const provider = new Gtk.CssProvider();
+            provider.load_from_string(css);
+            Gtk.StyleContext.add_provider_for_display(global.display, provider, 1000);
+            this._provider = provider;
+            this._gtkProvider = true;
+        } catch (e) {
+            logError(e, 'Winacux: could not load the stylesheet; running unstyled');
+        }
+    }
+
+    _removeProvider(provider) {
+        if (!provider)
+            return;
+        try {
+            if (this._gtkProvider)
+                Gtk.StyleContext.remove_provider_for_display(global.display, provider);
+            else
+                Main.getThemeContext().remove_provider(provider);
+        } catch (e) {
+            // Removing a provider that is already gone is not worth reporting.
+        }
+    }
+
     _addStyle() {
         const file = Gio.File.new_for_path(`${this.path}/stylesheet.css`);
         const [, data] = file.load_contents(null);
-        this._provider = new St.CssProvider();
-        this._provider.load_from_data(data, null);
-        Main.getThemeContext().add_provider(this._provider, 1000);
-
+        this._loadCss(new TextDecoder().decode(data));
         this._watchThemeFile();
     }
 
@@ -135,13 +186,9 @@ export default class WinacuxExtension extends Extension {
             const [ok, data] = file.load_contents(null);
             if (!ok || data.length === 0)
                 return;
-            if (this._themeProvider) {
-                Main.getThemeContext().remove_provider(this._themeProvider);
-                this._themeProvider = null;
-            }
-            this._themeProvider = new St.CssProvider();
-            this._themeProvider.load_from_data(data, null);
-            Main.getThemeContext().add_provider(this._themeProvider, 1100);
+            this._removeProvider(this._themeProvider);
+            this._themeProvider = null;
+            this._loadCss(new TextDecoder().decode(data));
         } catch (e) {
             // No theme file yet, or it is being rewritten: not an error.
         }
@@ -152,13 +199,9 @@ export default class WinacuxExtension extends Extension {
             this._themeMonitor.cancel();
             this._themeMonitor = null;
         }
-        if (this._themeProvider) {
-            Main.getThemeContext().remove_provider(this._themeProvider);
-            this._themeProvider = null;
-        }
-        if (this._provider) {
-            Main.getThemeContext().remove_provider(this._provider);
-            this._provider = null;
-        }
+        this._removeProvider(this._themeProvider);
+        this._themeProvider = null;
+        this._removeProvider(this._provider);
+        this._provider = null;
     }
 }

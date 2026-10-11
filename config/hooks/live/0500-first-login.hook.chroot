@@ -1,0 +1,48 @@
+#!/bin/sh
+# WinacuxOS first login.
+#
+# GNOME Shell greets the first login of every new profile with its own balloon.
+# WinacuxOS ships its own welcome instead, so the greeting is marked as seen
+# the first time the live session starts.
+set -e
+
+LOG=/var/log/winacuxos-build.log
+echo "[winacuxos] installing the first-login hooks" | tee -a "$LOG"
+
+cat > /usr/local/bin/winacux-first-login <<'HOOK'
+#!/bin/sh
+# Runs once, in the user session, the first time WinacuxOS starts.
+set -e
+
+# Mark GNOME's own greeting as seen (it lives in libshell, not in a package).
+gsettings set org.gnome.desktop.session show-welcome false 2>/dev/null || true
+
+# Do not start the software update checker on a live system.
+mkdir -p ~/.config
+cat > ~/.config/autostart-disabled.list <<'EOF'
+org.gnome.Software.Notifications
+EOF
+
+exit 0
+HOOK
+chmod +x /usr/local/bin/winacux-first-login
+
+# Run it for the live session as soon as the graphical session exists.
+mkdir -p /etc/systemd/system
+cat > /etc/systemd/system/winacux-first-login.service <<'UNIT'
+[Unit]
+Description=WinacuxOS first-login setup
+After=graphical-session.target
+ConditionPathExists=!/var/lib/winacux/first-login-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/winacux-first-login
+ExecStartPost=/bin/sh -c 'mkdir -p /var/lib/winacux && date -Is > /var/lib/winacux/first-login-done'
+
+[Install]
+WantedBy=graphical-session.target
+UNIT
+
+systemctl enable winacux-first-login.service >/dev/null 2>&1 || true
+echo "[winacuxos] first-login hook installed" | tee -a "$LOG"
