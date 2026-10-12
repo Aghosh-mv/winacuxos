@@ -64,7 +64,7 @@ BRANDING.md          palette, typography, logo and mockup decisions
 ## Brand identity
 
 See [BRANDING.md](BRANDING.md). Palette, the "W" mark, the tagline
-*Your OS. Your Way.* and the placeholder-data policy all live there.
+*Your OS. Your Way.* and the data policy all live there.
 
 ## Roadmap
 
