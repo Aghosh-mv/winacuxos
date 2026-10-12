@@ -3,6 +3,9 @@
 **Your OS. Your Way.** — a Debian-based Linux distribution with its own desktop
 identity, built from scratch with `live-build`.
 
+> **Owner and credit: [Aghosh-mv](https://github.com/Aghosh-mv) (Aghosh World).**
+> Maintained under the `Aghosh-mv` organisation. Contributions welcome.
+
 WinacuxOS is not a wallpaper for GNOME. It ships a GNOME Shell extension that
 draws its own right-hand widget cards, workspace pills and live wallpaper, its
 own boot splash and boot menu, an intent-based workspace launcher (Winacux Flow),
